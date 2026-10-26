@@ -8,18 +8,33 @@ const SECRET = 'CAMBIA_QUESTA_CHIAVE';
 const POSTAZIONI_SHEET = 'Postazioni';
 const LOG_SHEET = 'StoricoInvii';
 
-function doGet() {
-  return ContentService.createTextOutput('Spazi BIO@DEI endpoint attivo');
+// The complete snapshot is the source for restoring the app, including desk positions.
+function doGet(e) {
+  const args=(e&&e.parameter)||{};
+  if(args.action!=='load')return ContentService.createTextOutput('Spazi BIO@DEI endpoint attivo');
+  if(!args.secret||args.secret!==SECRET)return json_({ok:false,error:'unauthorized'});
+  const lock=LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName('SnapshotApp');
+    if(!sh||sh.getLastRow()<2)return json_({ok:false,error:'no_snapshot'});
+    const chunks=sh.getRange(2,2,sh.getLastRow()-1,1).getValues().map(r=>r[0]);
+    return json_({ok:true,payload:JSON.parse(Utilities.newBlob(Utilities.base64Decode(chunks.join(''))).getDataAsString('UTF-8'))});
+  }catch(err){return json_({ok:false,error:String(err&&err.message||err)})}
+  finally{if(lock.hasLock())lock.releaseLock()}
 }
 
 function doPost(e) {
+  const lock=LockService.getScriptLock();
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (!body.secret || body.secret !== SECRET) {
       return json_({ok:false, error:'unauthorized'});
     }
     const payload = body.payload || {};
-    const rows = Array.isArray(payload.rows) ? payload.rows : [];
+    if(!Array.isArray(payload.rooms)||!payload.rooms.length||!payload.rooms.every(r=>Array.isArray(r.seats))||!Array.isArray(payload.rows))return json_({ok:false,error:'invalid_payload'});
+    lock.waitLock(10000);
+    const rows = payload.rows;
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sh = sheet_(ss, POSTAZIONI_SHEET);
     const headers = [
@@ -28,6 +43,7 @@ function doPost(e) {
       'Ultimo invio'
     ];
 
+    if(sh.getMaxRows()<rows.length+1)sh.insertRowsAfter(sh.getMaxRows(),rows.length+1-sh.getMaxRows());
     sh.clearContents();
     sh.getRange(1,1,1,headers.length).setValues([headers]);
     if (rows.length) {
@@ -46,15 +62,31 @@ function doPost(e) {
       sh.getRange(2,16,Math.max(1,rows.length),1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
     }
 
+    const absences=[],positions=[];
+    payload.rooms.forEach(r=>{
+      r.seats.forEach(seat=>(seat.absences||[]).forEach(a=>absences.push([r.name,seat.number,a.label||'Estero',a.start||'',a.end||''])));
+      if(r.layout&&Array.isArray(r.layout.cells))r.layout.cells.forEach((key,index)=>{
+        const seat=r.seats.find(s=>String(s.id==null?s.number:s.id)===String(key));
+        positions.push([r.name,Math.floor(index/r.layout.cols)+1,index%r.layout.cols+1,seat?seat.number:'',seat?(seat.id||''):'']);
+      });
+    });
+    table_(ss,'Assenze',['Stanza','Postazione','Descrizione','Dal','Al'],absences);
+    table_(ss,'Piante',['Stanza','Riga','Colonna','Postazione','ID postazione'],positions);
+    // Split JSON to stay below Google Sheets' per-cell character limit.
+    const serialized=Utilities.base64Encode(JSON.stringify(payload),Utilities.Charset.UTF_8),chunks=[];
+    for(let i=0;i<serialized.length;i+=20000)chunks.push([chunks.length,serialized.slice(i,i+20000)]);
+    table_(ss,'SnapshotApp',['Parte','Snapshot JSON (base64)'],chunks);
+
     const log = sheet_(ss, LOG_SHEET);
     if (log.getLastRow() === 0) log.appendRow(['Data/ora','Righe','Generato dalla pagina','Versione schema']);
     log.appendRow([new Date(), rows.length, payload.generatedAt || '', payload.schemaVersion || '']);
     log.setFrozenRows(1);
 
-    return json_({ok:true, rows:rows.length});
+    SpreadsheetApp.flush();
+    return json_({ok:true, rows:rows.length, generatedAt:payload.generatedAt});
   } catch (err) {
     return json_({ok:false, error:String(err && err.message || err)});
-  }
+  } finally { if(lock.hasLock())lock.releaseLock(); }
 }
 
 function sheet_(ss, name) {
@@ -64,4 +96,13 @@ function sheet_(ss, name) {
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function table_(ss,name,headers,rows){
+  const sh=sheet_(ss,name);sh.clearContents();
+  if(sh.getMaxRows()<rows.length+1)sh.insertRowsAfter(sh.getMaxRows(),rows.length+1-sh.getMaxRows());
+  if(sh.getMaxColumns()<headers.length)sh.insertColumnsAfter(sh.getMaxColumns(),headers.length-sh.getMaxColumns());
+  sh.getRange(1,1,1,headers.length).setValues([headers]);
+  if(rows.length)sh.getRange(2,1,rows.length,headers.length).setValues(rows);
+  sh.setFrozenRows(1);
 }

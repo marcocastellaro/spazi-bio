@@ -21,15 +21,19 @@ main{padding:12px;max-width:1100px;margin:auto} .toolbar{display:flex;gap:8px;fl
 .authGate{min-height:360px;display:flex;align-items:center;justify-content:center;padding:28px 16px}.authCard{width:min(420px,100%);background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px}.authCard h2{margin:0 0 8px;font-size:20px}.authCard p{margin:0 0 14px;color:var(--muted);font-size:13px}.authCard input{width:100%}.authMsg{min-height:18px;margin-top:8px;font-size:12px}.authMsg.err{color:var(--danger);font-weight:700}.appLocked{display:none!important}
 
 .occupancy{margin-top:12px}.occupancyHeading{font-size:12px;font-weight:700;margin-bottom:6px}.occupancyTrack{display:flex;height:20px;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden;background:#16a34a}.occupancySegment{height:100%;min-width:0}.occupancySegment:focus{outline:2px solid #1d2733;outline-offset:-2px}.occupancySegment.primary,.occupancyLegend .primary{background:#dc2626}.occupancySegment.temporary,.occupancyLegend .temporary{background:#facc15}.occupancySegment.available,.occupancyLegend .available{background:#16a34a}.occupancyMonths{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));font-size:9px;color:var(--muted);margin-top:4px;text-align:center}.occupancyLegend{display:flex;gap:6px 10px;flex-wrap:wrap;font-size:10px;margin-top:6px}.occupancyLegend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px}
+
+.floorGrid{display:grid;grid-template-columns:repeat(var(--floor-cols),minmax(0,1fr));gap:6px;margin-top:10px;max-width:650px}.floorCell{position:relative;min-width:0;height:94px;border:1px dashed #a8b4c4;border-radius:10px;background:#f8fafc;color:var(--ink);padding:5px;font:inherit;cursor:pointer}.floorCell.empty{color:#64748b;font-size:11px}.floorCell.desk{background:#eaf0ff;border:2px solid #bacbf2;touch-action:none;user-select:none;-webkit-user-select:none}.floorCell.selected{border-color:#2457d6;box-shadow:0 0 0 2px #2457d6}.floorCell.dropTarget{background:#dcfce7;border-color:#15803d}.floorCell.moving{opacity:.55}.floorCell:focus-visible{outline:3px solid #2457d6;outline-offset:2px}.floorNumber{display:block;font-weight:800;font-size:16px}.floorPerson{display:block;font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:4px}.floorCoordinate{display:block;font-size:9px;color:#64748b;margin-top:5px}.floorActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 </style></head><body>
 <div id="authGate" class="authGate"><form id="authForm" class="authCard"><h2>Spazi BIO@DEI</h2><p>Inserisci la password per accedere alla gestione delle postazioni.</p><label>Password<input id="authPassword" type="password" autocomplete="current-password" inputmode="text" placeholder="Password"></label><div class="actions"><button class="btn sendTop" type="submit">Accedi</button></div><div id="authMsg" class="authMsg" aria-live="polite"></div></form></div>
 <div id="appRoot" class="appLocked">
-<header><h1>Spazi BIO@DEI</h1><nav><button data-tab="map" class="active">Postazioni</button><button data-tab="calendar">Calendario</button><button data-tab="review">Verifiche</button><button data-tab="tools">Configurazione</button><button id="sendSheetTop" class="sendTop">Invia</button><button id="lockApp">Blocca</button></nav><div id="topSyncStatus" class="topstatus">Non sincronizzato</div></header>
+<header><h1>Spazi BIO@DEI</h1><nav><button data-tab="map" class="active">Postazioni</button><button data-tab="layouts">Piante</button><button data-tab="calendar">Calendario</button><button data-tab="review">Verifiche</button><button data-tab="tools">Configurazione</button><button id="sendSheetTop" class="sendTop">Invia</button><button id="lockApp">Blocca</button></nav><div id="topSyncStatus" class="topstatus">Non sincronizzato</div></header>
+<div id="consultationNotice" class="banner hidden" role="status">Consultazione dal foglio · sola lettura. Per modificare, usa “Torna alla modifica” in Configurazione.</div>
 <main>
 <section id="map"><div class="banner">Ogni posto può avere un assegnatario principale e fino a 2 utilizzatori temporanei. Le barre rosse indicano sovrapposizioni nel periodo visualizzato.</div><div class="toolbar"><label>Stanza<select id="roomFilter"><option value="">Tutte</option></select></label><label>Anno novembre–ottobre<select id="occupancyYear"><option value="2024">2024–2025</option><option value="2025">2025–2026</option><option value="2026" selected>2026–2027</option><option value="2027">2027–2028</option><option value="2028">2028–2029</option><option value="2029">2029–2030</option><option value="2030">2030–2031</option></select></label><label>Dal<input type="date" id="rangeStart" value="2026-11-01"></label><label>Al<input type="date" id="rangeEnd" value="2027-10-31"></label><label style="flex:1">Cerca<input id="mapSearch" placeholder="Nome o supervisore"></label></div><div class="legend"><span><i class="dot"></i>principale</span><span><i class="dot t1"></i>temporaneo 1</span><span><i class="dot t2"></i>temporaneo 2</span><span><i class="dot" style="background:#86efac"></i>all’estero / posto libero</span><span><i class="dot c"></i>sovrapposizione</span></div><div id="rooms"></div></section>
+<section id="layouts" class="hidden"><div class="banner">Trascina una postazione su una cella, oppure tocca prima la postazione e poi la destinazione. Su una cella occupata le due postazioni si scambiano. Le disposizioni sono salvate su questo dispositivo e incluse nel backup JSON.</div><p id="layoutStatus" class="small" role="status" aria-live="polite"></p><div id="layoutRooms"></div></section>
 <section id="calendar" class="hidden"><div class="banner">Vista compatta delle sole postazioni con almeno un'assegnazione nel periodo selezionato.</div><div id="calendarRows"></div></section>
 <section id="review" class="hidden"><div class="banner">Verifiche già emerse confrontando Excel e mail. Puoi marcarle come risolte.</div><div id="reviews"></div></section>
-<section id="tools" class="hidden"><div class="room"><h2>Configurazione Google Sheet</h2><p><b>Da fare una sola volta su questo iPhone.</b> Incolla qui URL e chiave del Web App Apps Script. In seguito usa semplicemente il pulsante <b>Invia</b> in alto.</p><div class="syncbox"><label>URL Web App<input id="syncUrl" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec"></label><label style="margin-top:8px">Chiave condivisa<input id="syncKey" type="password" autocomplete="off" placeholder="La stessa impostata nello script"></label><div class="actions"><button class="btn" id="sendSheet">Prova invio</button><button class="btn" id="saveSyncConfig">Salva configurazione</button></div><div id="syncStatus" class="syncstatus">Non ancora inviato.</div></div></div><div class="room"><h2>Backup e trasferimento</h2><p>Le modifiche vengono salvate sul dispositivo. Esporta periodicamente un backup JSON.</p><div class="actions"><button class="btn" id="exportJson">Esporta JSON</button><button class="btn" id="exportCsv">Esporta CSV</button><button class="btn" id="importBtn">Importa JSON</button><button class="btn" id="resetBtn">Ripristina dati iniziali</button></div><input type="file" id="importFile" accept="application/json" class="hidden"><p class="small">Il pulsante “Invia al Google Sheet” copia lo snapshot corrente nel foglio configurato; non modifica il file Excel originale.</p></div></section>
+<section id="tools" class="hidden"><div class="room"><h2>Configurazione Google Sheet</h2><p><b>Da fare una sola volta su questo iPhone.</b> Incolla qui URL e chiave del Web App Apps Script. In seguito usa semplicemente il pulsante <b>Invia</b> in alto.</p><div class="syncbox"><label>URL Web App<input id="syncUrl" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec"></label><label style="margin-top:8px">Chiave condivisa<input id="syncKey" type="password" autocomplete="off" placeholder="La stessa impostata nello script"></label><div class="actions"><button class="btn" id="sendSheet">Prova invio</button><button class="btn" id="saveSyncConfig">Salva configurazione</button><button class="btn" id="loadSheet">Carica dal foglio</button><button class="btn" id="consultSheet">Consulta dal foglio</button><button class="btn hidden" id="resumeEditing">Torna alla modifica</button></div><div id="syncStatus" class="syncstatus">Non ancora inviato.</div></div></div><div class="room"><h2>Backup e trasferimento</h2><p>Le modifiche vengono salvate sul dispositivo. Esporta periodicamente un backup JSON.</p><div class="actions"><button class="btn" id="exportJson">Esporta JSON</button><button class="btn" id="exportCsv">Esporta CSV</button><button class="btn" id="importBtn">Importa JSON</button><button class="btn" id="resetBtn">Ripristina dati iniziali</button></div><input type="file" id="importFile" accept="application/json" class="hidden"><p class="small">Il pulsante “Invia al Google Sheet” copia lo snapshot corrente nel foglio configurato; non modifica il file Excel originale.</p></div></section>
 </main>
 <div id="dialogHost"></div>
 </div>
@@ -64,7 +68,8 @@ function clone(x){return JSON.parse(JSON.stringify(x))}
 function migrateOld(old){if(!old||!old.rooms)return null; const n=clone(old); n.rooms.forEach(r=>r.seats.forEach(s=>{if(!('primary' in s)){s.primary=s.person?{...s.person,start:s.person.start||'',end:s.person.end||''}:null;delete s.person}; if(!Array.isArray(s.temporary))s.temporary=[]; s.temporary=s.temporary.slice(0,2); if(!Array.isArray(s.absences))s.absences=[]; s.absences=s.absences.slice(0,1)})); return n}
 function load(){try{let v=localStorage.getItem(KEY);if(v)return migrateOld(JSON.parse(v));let o=localStorage.getItem(OLDKEY);if(o)return migrateOld(JSON.parse(o));}catch(e){}return clone(INITIAL)}
 let state=load();
-function save(){localStorage.setItem(KEY,JSON.stringify(state));render()}
+let consultationMode=false;
+function save(){if(consultationMode)return;localStorage.setItem(KEY,JSON.stringify(state));render()}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function fullName(p){return p?[p.name,p.surname].filter(Boolean).join(' '):''}
 function parseDate(s){if(!/^\d{4}-\d{2}-\d{2}$/.test(s||''))return null;let [y,m,d]=s.split('-').map(Number);return Date.UTC(y,m-1,d)}
@@ -102,10 +107,82 @@ function personFields(prefix,p,label){p=p||{};return `<div class="sectionTitle w
 function absenceFields(abs){abs=abs||[];let a=abs[0]||{};return `<div class="sectionTitle wide">Periodo all’estero / assenza del principale</div><div class="small wide">Durante questo intervallo la postazione viene considerata libera per gli assegnatari temporanei.</div><div class="absenceFields wide"><label>Descrizione<input id="a0_label" value="${esc(a.label||'Estero')}" placeholder="es. Periodo all’estero"></label><div class="formgrid"><label>Dal<input id="a0_start" type="date" value="${esc(a.start||'')}"></label><label>Al<input id="a0_end" type="date" value="${esc(a.end||'')}"></label></div></div>`}
 function readAbsences(){let start=document.getElementById('a0_start').value,end=document.getElementById('a0_end').value,label=document.getElementById('a0_label').value.trim()||'Estero';return (start||end)?[{label,start,end}]:[]}
 function readPerson(prefix,old){let nm=document.getElementById(prefix+'_name').value.trim();if(!nm)return null;let parts=nm.split(/\s+/);return {...(old||{}),name:parts.shift(),surname:parts.join(' '),start:document.getElementById(prefix+'_start').value,end:document.getElementById(prefix+'_end').value,position:document.getElementById(prefix+'_position').value.trim(),supervisor:document.getElementById(prefix+'_supervisor').value.trim()}}
-function openEdit(ri,si){let s=state.rooms[ri].seats[si],host=document.getElementById('dialogHost');s.absences=s.absences||[];host.innerHTML=`<div class="dialogBack"><form class="dialog"><h3>${esc(state.rooms[ri].name)} · Postazione ${s.number}</h3><div class="formgrid">${personFields('p',s.primary,'Assegnatario principale')}${absenceFields(s.absences)}${personFields('t1',s.temporary[0],'Utilizzatore temporaneo 1')}${personFields('t2',s.temporary[1],'Utilizzatore temporaneo 2')}</div><div id="dialogConflict" class="conflictText"></div><div class="actions"><button class="btn" type="submit">Salva</button><button class="btn" type="button" data-cancel>Annulla</button></div></form></div>`;let form=host.querySelector('form');function check(){let tmp={primary:readPerson('p',s.primary),temporary:[readPerson('t1',s.temporary[0]),readPerson('t2',s.temporary[1])].filter(Boolean),absences:readAbsences()};let b=seatConflicts(tmp);document.getElementById('dialogConflict').textContent=b.size?'Attenzione: almeno un utilizzo temporaneo occupa la scrivania mentre il principale risulta presente, oppure due temporanei si sovrappongono.':''};host.querySelectorAll('input').forEach(x=>x.addEventListener('input',check));form.onsubmit=e=>{e.preventDefault();s.primary=readPerson('p',s.primary);s.absences=readAbsences();s.temporary=[readPerson('t1',s.temporary[0]),readPerson('t2',s.temporary[1])].filter(Boolean).slice(0,2);host.innerHTML='';save()};host.querySelector('[data-cancel]').onclick=()=>host.innerHTML='';check()}
+function openEdit(ri,si){if(consultationMode)return;let s=state.rooms[ri].seats[si],host=document.getElementById('dialogHost');s.absences=s.absences||[];host.innerHTML=`<div class="dialogBack"><form class="dialog"><h3>${esc(state.rooms[ri].name)} · Postazione ${s.number}</h3><div class="formgrid">${personFields('p',s.primary,'Assegnatario principale')}${absenceFields(s.absences)}${personFields('t1',s.temporary[0],'Utilizzatore temporaneo 1')}${personFields('t2',s.temporary[1],'Utilizzatore temporaneo 2')}</div><div id="dialogConflict" class="conflictText"></div><div class="actions"><button class="btn" type="submit">Salva</button><button class="btn" type="button" data-cancel>Annulla</button></div></form></div>`;let form=host.querySelector('form');function check(){let tmp={primary:readPerson('p',s.primary),temporary:[readPerson('t1',s.temporary[0]),readPerson('t2',s.temporary[1])].filter(Boolean),absences:readAbsences()};let b=seatConflicts(tmp);document.getElementById('dialogConflict').textContent=b.size?'Attenzione: almeno un utilizzo temporaneo occupa la scrivania mentre il principale risulta presente, oppure due temporanei si sovrappongono.':''};host.querySelectorAll('input').forEach(x=>x.addEventListener('input',check));form.onsubmit=e=>{e.preventDefault();s.primary=readPerson('p',s.primary);s.absences=readAbsences();s.temporary=[readPerson('t1',s.temporary[0]),readPerson('t2',s.temporary[1])].filter(Boolean).slice(0,2);host.innerHTML='';save()};host.querySelector('[data-cancel]').onclick=()=>host.innerHTML='';check()}
 function renderCalendar(){let h=document.getElementById('calendarRows');h.innerHTML='';state.rooms.forEach(r=>{r.seats.forEach(s=>{if(!s.primary&&!s.temporary.length)return;let d=document.createElement('div');let bad=seatConflicts(s);d.className='personrow'+(bad.size?' overlap':'');d.innerHTML=`<b>${esc(r.name)} · posto ${s.number}</b>${bad.size?' <span class="badge bad">sovrapposizione</span>':''}<div class="small">${s.primary?'Principale: '+esc(fullName(s.primary)):''} ${s.temporary.map((p,i)=>' · T'+(i+1)+': '+esc(fullName(p))).join('')}</div>${occupancyHtml(s)}${timelineHtml(s)}`;h.appendChild(d)})})}
 function renderReviews(){let h=document.getElementById('reviews');h.innerHTML='';state.reviews.forEach(x=>{let d=document.createElement('div');d.className='review'+(x.resolved?' resolved':'');d.innerHTML=`<span class="badge">${esc(x.category)}</span> <b>${esc(x.subject)}</b><div class="small"><b>Excel:</b> ${esc(x.excel)}<br><b>Mail:</b> ${esc(x.mail)}<br><b>Azione:</b> ${esc(x.action)}</div><div class="actions"><button class="mini">${x.resolved?'Riapri':'Segna risolto'}</button></div>`;d.querySelector('button').onclick=()=>{x.resolved=!x.resolved;save()};h.appendChild(d)})}
-function render(){renderRooms();renderCalendar();renderReviews()}
+// Layout keys identify desks, so moving a desk never moves its assignments to another desk.
+let layoutSelection=null,layoutNotice='',layoutSuppressClickUntil=0;
+function deskKey(s){return String(s.id??s.number)}
+function roomLayout(r){
+  let size=/\b209\b|\b301\b|DEI\/S/i.test(r.name)?[3,4]:/\b310\b/.test(r.name)?[3,2]:/\b125\b/.test(r.name)?[2,4]:[2,2];
+  const cols=size[1],rows=Math.max(size[0],Math.ceil(r.seats.length/cols));
+  const keys=r.seats.map(deskKey),used=new Set(),cells=Array(rows*cols).fill(null);
+  if(r.layout&&Array.isArray(r.layout.cells))r.layout.cells.slice(0,cells.length).forEach((k,i)=>{if(k!=null&&keys.includes(String(k))&&!used.has(String(k))){cells[i]=String(k);used.add(String(k))}});
+  keys.filter(k=>!used.has(k)).forEach(k=>{cells[cells.indexOf(null)]=k});
+  return {rows,cols,cells};
+}
+function moveDesk(ri,key,target){
+  if(consultationMode)return;
+  const r=state.rooms[ri],layout=roomLayout(r),source=layout.cells.indexOf(key);
+  if(source<0||target<0||target>=layout.cells.length)return;
+  [layout.cells[source],layout.cells[target]]=[layout.cells[target],layout.cells[source]];
+  r.layout=layout;layoutSelection=null;layoutNotice='Disposizione salvata.';save();
+}
+function selectLayoutCell(ri,index){
+  if(consultationMode)return;
+  const layout=roomLayout(state.rooms[ri]),key=layout.cells[index];
+  if(layoutSelection&&layoutSelection.ri===ri){
+    if(layoutSelection.key===key){layoutSelection=null;layoutNotice='Selezione annullata.';renderLayouts();return}
+    moveDesk(ri,layoutSelection.key,index);return;
+  }
+  layoutSelection=key?{ri,key}:null;
+  layoutNotice=key?'Postazione selezionata: tocca la destinazione nella stessa stanza.':'Seleziona prima una postazione.';
+  renderLayouts();
+}
+function bindDeskPointer(button,ri,key){
+  button.addEventListener('pointerdown',event=>{
+    if(consultationMode||event.button!==0||!event.isPrimary)return;
+    const x=event.clientX,y=event.clientY,id=event.pointerId;let dragged=false,target=null;
+    button.setPointerCapture(id);
+    const clear=()=>{document.querySelectorAll('.dropTarget').forEach(e=>e.classList.remove('dropTarget'));button.classList.remove('moving');button.removeEventListener('pointermove',move);button.removeEventListener('pointerup',end);button.removeEventListener('pointercancel',cancel)};
+    const move=e=>{if(e.pointerId!==id)return;if(Math.hypot(e.clientX-x,e.clientY-y)<8&&!dragged)return;dragged=true;button.classList.add('moving');document.querySelectorAll('.dropTarget').forEach(el=>el.classList.remove('dropTarget'));target=document.elementFromPoint(e.clientX,e.clientY)?.closest('.floorCell');if(target&&Number(target.dataset.room)===ri)target.classList.add('dropTarget');else target=null};
+    const end=e=>{if(e.pointerId!==id)return;clear();if(dragged){layoutSuppressClickUntil=Date.now()+400;if(target)moveDesk(ri,key,Number(target.dataset.cell))}};
+    const cancel=()=>{clear();layoutSuppressClickUntil=Date.now()+400};
+    button.addEventListener('pointermove',move);button.addEventListener('pointerup',end);button.addEventListener('pointercancel',cancel);
+  });
+}
+function renderLayouts(){
+  if(layoutSelection&&!state.rooms[layoutSelection.ri]?.seats.some(s=>deskKey(s)===layoutSelection.key))layoutSelection=null;
+  const host=document.getElementById('layoutRooms');host.innerHTML='';document.getElementById('layoutStatus').textContent=layoutNotice;
+  state.rooms.forEach((r,ri)=>{
+    const layout=roomLayout(r),room=document.createElement('div');room.className='room';
+    room.innerHTML=`<h2>${esc(r.name)}</h2><div class="small">${layout.rows} righe × ${layout.cols} colonne · ${r.seats.length} postazioni</div><div class="floorGrid" style="--floor-cols:${layout.cols}" role="group" aria-label="${esc('Pianta '+r.name)}"></div><div class="floorActions"></div>`;
+    const grid=room.querySelector('.floorGrid');
+    layout.cells.forEach((key,index)=>{
+      const seat=key==null?null:r.seats.find(s=>deskKey(s)===key),cell=document.createElement('button');
+      cell.type='button';cell.className='floorCell '+(seat?'desk':'empty');cell.dataset.room=ri;cell.dataset.cell=index;
+      const selected=!!seat&&layoutSelection?.ri===ri&&layoutSelection.key===key;cell.classList.toggle('selected',selected);cell.setAttribute('aria-pressed',String(selected));
+      const coord=`Riga ${Math.floor(index/layout.cols)+1}, colonna ${index%layout.cols+1}`;
+      cell.setAttribute('aria-label',`${coord}: ${seat?'Postazione '+seat.number:'cella libera'}`);
+      cell.innerHTML=seat?`<span class="floorNumber">${esc(seat.number)}</span><span class="floorPerson">${esc(fullName(seat.primary)||'Senza titolare')}</span><span class="floorCoordinate">${Math.floor(index/layout.cols)+1} · ${index%layout.cols+1}</span>`:'Cella libera';
+      cell.onclick=()=>{if(Date.now()>=layoutSuppressClickUntil)selectLayoutCell(ri,index)};
+      if(seat)bindDeskPointer(cell,ri,key);grid.appendChild(cell);
+    });
+    if(layoutSelection?.ri===ri){
+      const actions=room.querySelector('.floorActions'),edit=document.createElement('button'),cancel=document.createElement('button');
+      edit.className=cancel.className='mini';edit.textContent='Modifica assegnazioni';edit.onclick=()=>openEdit(ri,r.seats.findIndex(s=>deskKey(s)===layoutSelection.key));
+      cancel.textContent='Annulla selezione';cancel.onclick=()=>{layoutSelection=null;layoutNotice='';renderLayouts()};actions.append(edit,cancel);
+    }
+    host.appendChild(room);
+  });
+}
+function renderConsultation(){
+  document.getElementById('consultationNotice').classList.toggle('hidden',!consultationMode);
+  document.getElementById('resumeEditing').classList.toggle('hidden',!consultationMode);
+  document.querySelectorAll('[data-edit],#layoutRooms button,#reviews button,#importBtn,#importFile,#resetBtn,#sendSheet,#sendSheetTop').forEach(el=>el.disabled=consultationMode);
+}
+function render(){renderRooms();renderCalendar();renderReviews();renderLayouts();renderConsultation()}
+
 state.rooms.forEach(r=>{let o=document.createElement('option');o.value=r.name;o.textContent=r.name;document.getElementById('roomFilter').appendChild(o)});
 document.getElementById('occupancyYear').addEventListener('change',()=>{const year=Number(document.getElementById('occupancyYear').value);document.getElementById('rangeStart').value=`${year}-11-01`;document.getElementById('rangeEnd').value=`${year+1}-10-31`;render()});
 ['roomFilter','rangeStart','rangeEnd'].forEach(id=>document.getElementById(id).addEventListener('change',render));document.getElementById('mapSearch').addEventListener('input',render);
@@ -119,8 +196,56 @@ const SYNC_URL_KEY='bio_dei_sync_url_v1', SYNC_SECRET_KEY='bio_dei_sync_secret_v
 function syncStatus(msg,kind=''){let el=document.getElementById('syncStatus');if(el){el.textContent=msg;el.className='syncstatus'+(kind?' '+kind:'')}let top=document.getElementById('topSyncStatus');if(top){top.textContent=msg;top.className='topstatus'+(kind?' '+kind:'')}}
 function loadSyncConfig(){try{document.getElementById('syncUrl').value=localStorage.getItem(SYNC_URL_KEY)||'';document.getElementById('syncKey').value=localStorage.getItem(SYNC_SECRET_KEY)||'';let last=localStorage.getItem(SYNC_LAST_KEY);if(last)syncStatus('Ultimo invio: '+last,'ok');else if((localStorage.getItem(SYNC_URL_KEY)||'')&&(localStorage.getItem(SYNC_SECRET_KEY)||''))syncStatus('Pronto per inviare','ok')}catch(e){}}
 function saveSyncConfig(){let u=document.getElementById('syncUrl').value.trim(),k=document.getElementById('syncKey').value;try{localStorage.setItem(SYNC_URL_KEY,u);localStorage.setItem(SYNC_SECRET_KEY,k);syncStatus('Configurazione salvata sul dispositivo.','ok')}catch(e){syncStatus('Impossibile salvare la configurazione.','err')}}
-function snapshotPayload(){let rows=[];state.rooms.forEach(r=>r.seats.forEach(s=>{let add=(p,t,slot)=>{if(!p)return;rows.push({room:r.name,seat:s.number,type:t,slot:slot,name:p.name||'',surname:p.surname||'',fullName:fullName(p),start:p.start||'',end:p.end||'',position:p.position||'',supervisor:p.supervisor||'',department:p.department||'',days:p.days||'',note:p.note||'',sourceRow:p.sourceRow||''})};add(s.primary,'Principale',0);s.temporary.forEach((p,i)=>add(p,'Temporaneo',i+1))}));return {app:'Spazi BIO@DEI',schemaVersion:2,generatedAt:new Date().toISOString(),sourceGenerated:state.generated||'',rows,rooms:state.rooms,reviews:state.reviews||[]}}
-async function sendToSheet(){let btn=document.getElementById('sendSheet'),url=document.getElementById('syncUrl').value.trim(),secret=document.getElementById('syncKey').value;if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/.test(url)){syncStatus('Inserisci un URL Web App Apps Script valido che termini in /exec.','err');return}if(!secret){syncStatus('Inserisci la chiave condivisa.','err');return}saveSyncConfig();btn.disabled=true;syncStatus('Invio in corso…','busy');let payload=snapshotPayload();try{await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({secret,payload})});let now=new Date().toLocaleString('it-IT');localStorage.setItem(SYNC_LAST_KEY,now);syncStatus('Inviato al Google Sheet alle '+now+'. Controlla la scheda Postazioni per verificare il primo invio.','ok')}catch(e){syncStatus('Invio non riuscito. Controlla URL, connessione e distribuzione del Web App.','err')}finally{btn.disabled=false}}
+function snapshotPayload(){let rows=[];state.rooms.forEach(r=>r.seats.forEach(s=>{let add=(p,t,slot)=>{if(!p)return;rows.push({room:r.name,seat:s.number,type:t,slot:slot,name:p.name||'',surname:p.surname||'',fullName:fullName(p),start:p.start||'',end:p.end||'',position:p.position||'',supervisor:p.supervisor||'',department:p.department||'',days:p.days||'',note:p.note||'',sourceRow:p.sourceRow||''})};add(s.primary,'Principale',0);s.temporary.forEach((p,i)=>add(p,'Temporaneo',i+1))}));return {app:'Spazi BIO@DEI',schemaVersion:3,generatedAt:new Date().toISOString(),sourceGenerated:state.generated||'',rows,rooms:state.rooms.map(r=>({...r,layout:roomLayout(r)})),reviews:state.reviews||[]}}
+function sheetConfig(){
+  const url=document.getElementById('syncUrl').value.trim(),secret=document.getElementById('syncKey').value;
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/.test(url))throw new Error('Inserisci un URL Web App Apps Script valido che termini in /exec.');
+  if(!secret)throw new Error('Inserisci la chiave condivisa.');
+  return {url,secret};
+}
+async function fetchSheetSnapshot(config){
+  const url=new URL(config.url);url.searchParams.set('action','load');url.searchParams.set('secret',config.secret);url.searchParams.set('_',String(Date.now()));
+  const response=await fetch(url.toString(),{cache:'no-store',redirect:'follow',signal:AbortSignal.timeout(30000)});
+  if(!response.ok)throw new Error('Lettura dal foglio non riuscita. Controlla la distribuzione del Web App.');
+  let result;try{result=await response.json()}catch{throw new Error('Aggiorna AppsScript_Spazi_BIO.gs e distribuisci una nuova versione del Web App per caricare i dati.')}
+  if(!result.ok)throw new Error(result.error==='unauthorized'?'Chiave condivisa non corretta.':result.error==='no_snapshot'?'Nessuno snapshot salvato. Esegui prima un invio con il nuovo script.':'Impossibile leggere lo snapshot dal foglio.');
+  const payload=result.payload;
+  if(!payload||!Array.isArray(payload.rooms)||!payload.rooms.length||!payload.rooms.every(r=>Array.isArray(r.seats)))throw new Error('Snapshot del foglio non valido.');
+  return payload;
+}
+async function loadFromSheet(readOnly){
+  let config;try{config=sheetConfig()}catch(e){syncStatus(e.message,'err');return}
+  if(!confirm('Caricare i dati salvati nel foglio al posto della vista corrente? Esporta prima un backup JSON per conservare eventuali modifiche locali.'))return;
+  const buttons=[document.getElementById('loadSheet'),document.getElementById('consultSheet')];buttons.forEach(b=>b.disabled=true);syncStatus('Caricamento dal foglio…','busy');
+  try{
+    const payload=await fetchSheetSnapshot(config),next=migrateOld({generated:payload.sourceGenerated||'',rooms:payload.rooms,reviews:payload.reviews||[]});
+    if(!readOnly)localStorage.setItem(KEY,JSON.stringify(next));
+    state=next;consultationMode=readOnly;layoutSelection=null;layoutNotice='';
+    const filter=document.getElementById('roomFilter');filter.innerHTML='<option value="">Tutte</option>';state.rooms.forEach(r=>{const o=document.createElement('option');o.value=r.name;o.textContent=r.name;filter.appendChild(o)});
+    document.getElementById('mapSearch').value='';render();syncStatus(readOnly?'Dati del foglio caricati in sola lettura.':'Dati del foglio caricati e salvati sul dispositivo.','ok');
+    document.querySelector('[data-tab="layouts"]').click();
+  }catch(e){syncStatus(e.message||'Caricamento non riuscito.','err')}
+  finally{buttons.forEach(b=>b.disabled=false)}
+}
+async function sendToSheet(){
+  if(consultationMode)return;
+  let config;try{config=sheetConfig()}catch(e){syncStatus(e.message,'err');return}
+  saveSyncConfig();const btn=document.getElementById('sendSheet'),top=document.getElementById('sendSheetTop');btn.disabled=top.disabled=true;syncStatus('Invio in corso…','busy');const payload=snapshotPayload();
+  try{
+    await fetch(config.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({secret:config.secret,payload}),signal:AbortSignal.timeout(30000)});
+    let confirmed=false;
+    try{for(let i=0;i<3;i++){const saved=await fetchSheetSnapshot(config);if(saved.generatedAt===payload.generatedAt){confirmed=true;break}await new Promise(resolve=>setTimeout(resolve,700))}}catch{}
+    if(confirmed){const now=new Date().toLocaleString('it-IT');localStorage.setItem(SYNC_LAST_KEY,now);syncStatus('Salvataggio verificato nel Google Sheet alle '+now+'.','ok')}
+    else syncStatus('Invio trasmesso, salvataggio non confermato. Controlla il foglio e aggiorna il Web App prima di riprovare.','err');
+  }catch{syncStatus('Invio non riuscito o non confermato. Controlla il foglio, URL e connessione prima di riprovare.','err')}
+  finally{btn.disabled=top.disabled=consultationMode}
+}
+document.getElementById('loadSheet').onclick=()=>loadFromSheet(false);
+document.getElementById('consultSheet').onclick=()=>loadFromSheet(true);
+document.getElementById('resumeEditing').onclick=()=>{
+  if(!confirm('Riprendere la modifica dei dati del foglio visualizzati? Verranno salvati anche su questo dispositivo.'))return;
+  try{localStorage.setItem(KEY,JSON.stringify(state));consultationMode=false;render()}catch{syncStatus('Impossibile salvare i dati sul dispositivo.','err')}
+};
 document.getElementById('saveSyncConfig').onclick=saveSyncConfig;document.getElementById('sendSheet').onclick=sendToSheet;document.getElementById('sendSheetTop').onclick=sendToSheet;document.getElementById('lockApp').onclick=()=>{sessionStorage.removeItem(AUTH_SESSION_KEY);setUnlocked(false);document.getElementById('authPassword').focus()};loadSyncConfig();
 render();
 </script></body></html>
