@@ -14,6 +14,9 @@ Mini-app mobile-first per gestire le postazioni BIO@DEI.
 - Durante il periodo all'estero la postazione viene considerata libera per gli assegnatari temporanei.
 - Le sovrapposizioni vengono segnalate solo quando un temporaneo occupa la postazione mentre il titolare risulta presente, oppure quando i due temporanei si sovrappongono.
 - Vista calendario compatta con barre temporali e conflitti.
+- Barra di utilizzo annuale per ogni postazione, dal 1 novembre al 31 ottobre (predefinito 2026–2027), con selettore dell’anno.
+- Rosso: titolare presente; giallo: uso temporaneo; verde: disponibile, incluse le assenze del titolare. In caso di sovrapposizione la barra mostra l’uso temporaneo e rimane la segnalazione di conflitto.
+- Una data di inizio vuota indica un’assegnazione già iniziata; una fine vuota indica un’assegnazione senza scadenza.
 - Backup/export JSON e CSV.
 - Salvataggio locale nel browser.
 - Pulsante di invio verso Google Sheet tramite Google Apps Script.
