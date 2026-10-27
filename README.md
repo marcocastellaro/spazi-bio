@@ -160,3 +160,52 @@ La scheda **Postazioni** usa la stessa disposizione di **Piante**, comprese le
 celle vuote. La ricerca mantiene le posizioni e segnala le celle escluse.
 Su schermi piccoli ogni stanza scorre lateralmente per mantenere leggibili
 le schede dettagliate senza cambiare la matrice.
+
+## Accesso OAuth da Codex ad Apps Script
+
+Per gestire codice e distribuzioni via API è necessario il consenso dell'account
+Google proprietario del progetto. Il Web App URL e la chiave dell'app non
+conferiscono questi permessi. Il progetto configurato è
+`1htJJdXvV55-oMZGZCAhFYh1ouEZq6t8hvo12UFmtijCUq8VMz-J3CKqi`.
+
+Il comando `scripts/google-oauth.mjs` usa il client OAuth ufficiale di
+`@google/clasp` 3.4.1, installato fuori dal checkout:
+
+```sh
+npm --cache /workspace/.cache/npm install --prefix /workspace/spazi-bio-tools --no-audit --no-fund --save-exact @google/clasp@3.4.1
+node scripts/google-oauth.mjs prepare
+```
+
+Prima del consenso, abilita l'API Apps Script nelle impostazioni dell'account:
+https://script.google.com/home/usersettings . Il link stampato dal comando
+richiede soltanto i permessi `script.projects`, `script.deployments` e
+`script.webapp.deploy`. Il ritorno a `http://localhost:8888` segue il flusso
+manuale di clasp: su un altro dispositivo la pagina può risultare irraggiungibile,
+ma i parametri restituiti da Google restano nella barra indirizzi.
+
+Nelle **impostazioni dell'ambiente**, inserisci il valore del parametro `code`
+nel secret `APPS_SCRIPT_AUTH_CODE` e quello di `state` nella variabile
+`APPS_SCRIPT_RETURN_STATE`. Non incollare in chat né il codice né l'intero URL
+di ritorno. Il codice è monouso e scade rapidamente: completa la procedura
+subito dopo il consenso. Dopo che i valori sono applicati all'ambiente:
+
+```sh
+node scripts/google-oauth.mjs complete
+node scripts/google-oauth.mjs check
+```
+
+Il primo comando verifica `state` e scambia il codice con PKCE; il secondo
+legge soltanto il progetto e la distribuzione esistente. Per il traffico
+cloud servono `oauth2.googleapis.com` e `script.googleapis.com`, oltre ai domini
+del Web App. Le credenziali sono conservate con permessi privati fuori dal
+repository, in `/workspace/.private/spazi-bio-google`; non committarle né
+stamparle nei log. `status` mostra solo se l'accesso è configurato. I percorsi
+possono essere personalizzati con `SPAZI_BIO_GOOGLE_TOOLS` e
+`SPAZI_BIO_GOOGLE_PRIVATE`.
+
+Il test `tests/google-oauth.test.cjs` verifica preparazione, riuso della
+richiesta, scope, PKCE, permessi dei file e rifiuto di uno state errato senza
+contattare Google. Il collegamento reale resta da verificare con il consenso
+dell'utente. Il comando non aggiorna ancora il codice remoto: un futuro invio
+tramite API dovrà mantenere la chiave `SECRET` e le impostazioni della
+distribuzione esistente.
