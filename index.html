@@ -20,7 +20,7 @@ main{padding:12px;max-width:1100px;margin:auto} .toolbar{display:flex;gap:8px;fl
 
 .authGate{min-height:360px;display:flex;align-items:center;justify-content:center;padding:28px 16px}.authCard{width:min(420px,100%);background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px}.authCard h2{margin:0 0 8px;font-size:20px}.authCard p{margin:0 0 14px;color:var(--muted);font-size:13px}.authCard input{width:100%}.authMsg{min-height:18px;margin-top:8px;font-size:12px}.authMsg.err{color:var(--danger);font-weight:700}.appLocked{display:none!important}
 
-.occupancy{margin-top:12px}.occupancyHeading{font-size:12px;font-weight:700;margin-bottom:6px}.occupancyTrack{display:flex;height:20px;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden;background:#16a34a}.occupancySegment{height:100%;min-width:0}.occupancySegment:focus{outline:2px solid #1d2733;outline-offset:-2px}.occupancySegment.primary,.occupancyLegend .primary{background:#dc2626}.occupancySegment.temporary,.occupancyLegend .temporary{background:#facc15}.occupancySegment.available,.occupancyLegend .available{background:#16a34a}.occupancyMonths{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));font-size:9px;color:var(--muted);margin-top:4px;text-align:center}.occupancyLegend{display:flex;gap:6px 10px;flex-wrap:wrap;font-size:10px;margin-top:6px}.occupancyLegend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px}
+.occupancy{margin-top:12px}.occupancyHeading{font-size:12px;font-weight:700;margin-bottom:6px}.occupancyTrack{display:flex;height:28px;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden;background:#16a34a}.occupancySegment{height:100%;min-width:0;flex-shrink:0}.occupancySegment.temporary{display:flex;align-items:center;justify-content:center;border:0;border-radius:0;padding:0;overflow:hidden;cursor:pointer;font:inherit}.occupancyName{display:block;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 3px;color:#fff;font-size:11px;font-weight:800;text-shadow:0 1px 2px #785600,0 0 1px #785600}.occupancyDetail{font-size:12px;margin-top:6px;color:var(--ink);overflow-wrap:anywhere}.occupancySegment:focus{outline:2px solid #1d2733;outline-offset:-2px}.occupancySegment.primary,.occupancyLegend .primary{background:#dc2626}.occupancySegment.temporary,.occupancyLegend .temporary{background:#facc15}.occupancySegment.available,.occupancyLegend .available{background:#16a34a}.occupancyMonths{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));font-size:9px;color:var(--muted);margin-top:4px;text-align:center}.occupancyLegend{display:flex;gap:6px 10px;flex-wrap:wrap;font-size:10px;margin-top:6px}.occupancyLegend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px}
 
 .floorGrid{display:grid;grid-template-columns:repeat(var(--floor-cols),minmax(0,1fr));gap:6px;margin-top:10px;max-width:650px}.floorCell{position:relative;min-width:0;height:94px;border:1px dashed #a8b4c4;border-radius:10px;background:#f8fafc;color:var(--ink);padding:5px;font:inherit;cursor:pointer}.floorCell.empty{color:#64748b;font-size:11px}.floorCell.desk{background:#eaf0ff;border:2px solid #bacbf2;touch-action:none;user-select:none;-webkit-user-select:none}.floorCell.selected{border-color:#2457d6;box-shadow:0 0 0 2px #2457d6}.floorCell.dropTarget{background:#dcfce7;border-color:#15803d}.floorCell.moving{opacity:.55}.floorCell:focus-visible{outline:3px solid #2457d6;outline-offset:2px}.floorNumber{display:block;font-weight:800;font-size:16px}.floorPerson{display:block;font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:4px}.floorCoordinate{display:block;font-size:9px;color:#64748b;margin-top:5px}.floorActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 
@@ -88,9 +88,10 @@ function occupancySegments(s,year){
   const active=(p,t)=>p&&(parseDate(p.start)??-Infinity)<=t&&t<=(parseDate(p.end)??Infinity);
   for(let t=start;t<end;t+=day){
     const absent=(s.absences||[]).some(a=>parseDate(a.start)!=null&&parseDate(a.end)!=null&&active(a,t));
-    const kind=(s.temporary||[]).some(p=>active(p,t))?'temporary':active(s.primary,t)&&!absent?'primary':'available';
+    const temporarySlots=(s.temporary||[]).flatMap((p,i)=>active(p,t)?[i]:[]);
+    const kind=temporarySlots.length?'temporary':active(s.primary,t)&&!absent?'primary':'available';
     const last=segments[segments.length-1];
-    if(last&&last.kind===kind)last.end=t+day;else segments.push({kind,start:t,end:t+day});
+    if(last&&last.kind===kind&&last.temporarySlots.join(',')===temporarySlots.join(','))last.end=t+day;else segments.push({kind,temporarySlots,start:t,end:t+day});
   }
   return segments;
 }
@@ -99,9 +100,20 @@ function occupancyHtml(s){
   const start=Date.UTC(year,10,1),end=Date.UTC(year+1,10,1);
   const labels={primary:'In uso dal titolare',temporary:'Uso temporaneo',available:'Disponibile'};
   const date=t=>new Date(t).toLocaleDateString('it-IT',{timeZone:'UTC'});
-  const bars=occupancySegments(s,year).map(x=>{const label=`${labels[x.kind]}: ${date(x.start)} – ${date(x.end-day)}`;return `<div class="occupancySegment ${x.kind}" style="width:${(x.end-x.start)/(end-start)*100}%" role="img" tabindex="0" aria-label="${esc(label)}" title="${esc(label)}"></div>`}).join('');
-  return `<div class="occupancy"><div class="occupancyHeading">Utilizzo · 1 nov ${year} – 31 ott ${year+1}</div><div class="occupancyTrack" role="group" aria-label="Utilizzo annuale della postazione">${bars}</div><div class="occupancyMonths" aria-hidden="true">${['Nov','Dic','Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott'].map(m=>`<span>${m}</span>`).join('')}</div><div class="occupancyLegend"><span><i class="primary"></i>Titolare</span><span><i class="temporary"></i>Temporaneo</span><span><i class="available"></i>Disponibile</span></div></div>`;
+  const bars=occupancySegments(s,year).map(x=>{
+    const names=x.temporarySlots.map(i=>fullName(s.temporary[i])||'Utilizzatore temporaneo').join(' / ');
+    const label=`${labels[x.kind]}${names?' · '+names:''}: ${date(x.start)} – ${date(x.end-day)}`;
+    const attrs=`class="occupancySegment ${x.kind}" style="width:${(x.end-x.start)/(end-start)*100}%" aria-label="${esc(label)}" title="${esc(label)}"`;
+    return x.kind==='temporary'?`<button type="button" ${attrs} data-detail="${esc(label)}"><span class="occupancyName">${esc(names)}</span></button>`:`<div ${attrs} role="img" tabindex="0"></div>`;
+  }).join('');
+  return `<div class="occupancy"><div class="occupancyHeading">Utilizzo · 1 nov ${year} – 31 ott ${year+1}</div><div class="occupancyTrack" role="group" aria-label="Utilizzo annuale della postazione">${bars}</div><div class="occupancyDetail hidden" aria-live="polite"></div><div class="occupancyMonths" aria-hidden="true">${['Nov','Dic','Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott'].map(m=>`<span>${m}</span>`).join('')}</div><div class="occupancyLegend"><span><i class="primary"></i>Titolare</span><span><i class="temporary"></i>Temporaneo</span><span><i class="available"></i>Disponibile</span></div></div>`;
 }
+function showOccupancyDetail(event){
+  const segment=event.target.closest?.('.occupancySegment.temporary');if(!segment)return;
+  const detail=segment.closest('.occupancy').querySelector('.occupancyDetail');detail.textContent=segment.dataset.detail;detail.classList.remove('hidden');
+}
+document.addEventListener('click',showOccupancyDetail);
+document.addEventListener('focusin',showOccupancyDetail);
 function timelineHtml(s){let a=parseDate(document.getElementById('rangeStart').value),b=parseDate(document.getElementById('rangeEnd').value);if(a==null||b==null||b<=a)return '<div class="small">Intervallo calendario non valido</div>';let bad=seatConflicts(s),abs=s.absences||[];let chips=abs.filter(x=>x.start&&x.end).map(x=>`<span class="absenceChip">${esc(x.label||'Estero')}: ${esc(x.start)} → ${esc(x.end)}</span>`).join('');return `<div class="timeline"><div class="track">${abs.map(x=>absenceHtml(x,a,b)).join('')}${barHtml(s.primary,'primary',bad.has('primary'),a,b)}${barHtml(s.temporary[0],'temp1',bad.has('temp1'),a,b)}${barHtml(s.temporary[1],'temp2',bad.has('temp2'),a,b)}</div><div class="ticks"><span>${esc(document.getElementById('rangeStart').value)}</span><span>${esc(document.getElementById('rangeEnd').value)}</span></div>${chips?`<div class="absenceList">${chips}</div>`:''}</div>`}
 function assignmentText(p){if(!p)return'';return `${esc(fullName(p))}<div class="meta">${esc(p.start||'già iniziato')} → ${esc(p.end||'fine ?')}${p.supervisor?'<br>'+esc(p.supervisor):''}</div>`}
 function renderRooms(){
@@ -122,7 +134,7 @@ function renderRooms(){
       }
       const bad=seatConflicts(seat);el.className='seat'+(bad.size?' overlap':'');
       const temps=seat.temporary.map((person,i)=>`<div class="temp"><b>Temporaneo ${i+1}</b><br>${assignmentText(person)}</div>`).join('');
-      el.innerHTML=`<div class="seatno"><span>Postazione ${esc(seat.number)}</span>${bad.size?'<span class="badge bad">Sovrapposizione</span>':''}</div><div class="person">${seat.primary?assignmentText(seat.primary):'<span class="small">Nessun assegnatario principale</span>'}</div>${temps}${occupancyHtml(seat)}${timelineHtml(seat)}<div class="actions"><button class="mini" data-edit>Modifica</button></div>`;
+      el.innerHTML=`<div class="seatno"><span>Postazione ${esc(seat.number)}</span>${bad.size?'<span class="badge bad">Sovrapposizione</span>':''}</div><div class="person">${seat.primary?assignmentText(seat.primary):'<span class="small">Nessun assegnatario principale</span>'}</div>${temps}${occupancyHtml(seat)}<div class="actions"><button class="mini" data-edit>Modifica</button></div>`;
       el.querySelector('[data-edit]').onclick=()=>openEdit(ri,si);grid.appendChild(el);
     });
     host.appendChild(room);
