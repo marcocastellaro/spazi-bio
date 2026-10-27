@@ -10,6 +10,19 @@ const SPREADSHEET_ID = '11gGAyeStD4bZrV2gETq7QwYY3ip6Al2qEMz_xZtF7QI';
 const POSTAZIONI_SHEET = 'Postazioni';
 const LOG_SHEET = 'StoricoInvii';
 
+function applySeatCatalog(data){
+  (data.rooms||[]).forEach(room=>{
+    const is209=/\b209\b/.test(room.name),is301=/\b301\b/.test(room.name);
+    if(!is209&&!is301)return;
+    const removed=new Set(room.seats.filter(s=>is301&&Number(s.number)===12).map(s=>String(s.id??s.number)));
+    room.seats=room.seats.filter(s=>!(is301&&Number(s.number)===12));
+    room.seats.forEach(s=>{if((is209&&Number(s.number)===9)||(is301&&Number(s.number)===11))s.label='JOLLY'});
+    if(room.layout&&Array.isArray(room.layout.cells))room.layout.cells=room.layout.cells.map(key=>removed.has(String(key))?null:key);
+  });
+  if(Array.isArray(data.rows))data.rows=data.rows.filter(row=>!(/\b301\b/.test(row.room)&&parseInt(row.seat,10)===12)).map(row=>{if((/\b209\b/.test(row.room)&&parseInt(row.seat,10)===9)||(/\b301\b/.test(row.room)&&parseInt(row.seat,10)===11))return {...row,seat:parseInt(row.seat,10)+' JOLLY'};return row});
+  return data;
+}
+
 // The complete snapshot is the source for restoring the app, including desk positions.
 function doGet(e) {
   const args=(e&&e.parameter)||{};
@@ -21,7 +34,7 @@ function doGet(e) {
     const sh=SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('SnapshotApp');
     if(!sh||sh.getLastRow()<2)return json_({ok:false,error:'no_snapshot'});
     const chunks=sh.getRange(2,2,sh.getLastRow()-1,1).getValues().map(r=>r[0]);
-    return json_({ok:true,payload:JSON.parse(Utilities.newBlob(Utilities.base64Decode(chunks.join(''))).getDataAsString('UTF-8'))});
+    return json_({ok:true,payload:applySeatCatalog(JSON.parse(Utilities.newBlob(Utilities.base64Decode(chunks.join(''))).getDataAsString('UTF-8')))});
   }catch(err){return json_({ok:false,error:String(err&&err.message||err)})}
   finally{if(lock.hasLock())lock.releaseLock()}
 }
@@ -35,7 +48,7 @@ function doPost(e) {
       console.warn('Invio rifiutato: chiave condivisa assente o non corretta.');
       return json_({ok:false, error:'unauthorized'});
     }
-    const payload = body.payload || {};
+    const payload = applySeatCatalog(body.payload || {});
     if(!Array.isArray(payload.rooms)||!payload.rooms.length||!payload.rooms.every(r=>Array.isArray(r.seats))||!Array.isArray(payload.rows))return json_({ok:false,error:'invalid_payload'});
     lock.waitLock(10000);
     const rows = payload.rows;
@@ -68,10 +81,10 @@ function doPost(e) {
 
     const absences=[],positions=[];
     payload.rooms.forEach(r=>{
-      r.seats.forEach(seat=>(seat.absences||[]).forEach(a=>absences.push([r.name,seat.number,a.label||'Estero',a.start||'',a.end||''])));
+      r.seats.forEach(seat=>(seat.absences||[]).forEach(a=>absences.push([r.name,seat.label?seat.number+' '+seat.label:seat.number,a.label||'Estero',a.start||'',a.end||''])));
       if(r.layout&&Array.isArray(r.layout.cells))r.layout.cells.forEach((key,index)=>{
         const seat=r.seats.find(s=>String(s.id==null?s.number:s.id)===String(key));
-        positions.push([r.name,Math.floor(index/r.layout.cols)+1,index%r.layout.cols+1,seat?seat.number:'',seat?(seat.id||''):'']);
+        positions.push([r.name,Math.floor(index/r.layout.cols)+1,index%r.layout.cols+1,seat?(seat.label?seat.number+' '+seat.label:seat.number):'',seat?(seat.id||''):'']);
       });
     });
     table_(ss,'Assenze',['Stanza','Postazione','Descrizione','Dal','Al'],absences);

@@ -42,7 +42,7 @@ try{
  }else if(command==='status'){
    console.log('OAuth configurato:',fs.existsSync(path.join(privateRoot,'tokens.json')));
    console.log('Richiesta di consenso preparata:',fs.existsSync(path.join(privateRoot,'pending.json')));
- }else if(['check','inspect','deploy','verify'].includes(command)){
+ }else if(['check','inspect','deploy','verify','backup-data','update-catalog'].includes(command)){
    const credentials=readPrivate('tokens.json');client.setCredentials(credentials);
    client.on('tokens',tokens=>{Object.assign(credentials,tokens);savePrivate('tokens.json',credentials)});
    const require=createRequire(path.join(toolRoot,'package.json'));
@@ -56,15 +56,33 @@ try{
      const deployment=(await api.projects.deployments.get({scriptId:SCRIPT_ID,deploymentId:DEPLOYMENT_ID})).data;
      const config=deployment.deploymentConfig;
      const live=(await api.projects.getContent({scriptId:SCRIPT_ID,versionNumber:config.versionNumber})).data.files;
-     if(command==='verify'){
+     if(['verify','backup-data','update-catalog'].includes(command)){
        const key=sharedKey(live),apps=webApps(deployment);if(apps.length!==1)fail('Web App non univoco: verifica interrotta.');
        const url=new URL(apps[0].url);url.searchParams.set('action','load');url.searchParams.set('secret',key);url.searchParams.set('_',String(Date.now()));
        const {request}=require('gaxios');
        const response=await request({url:url.toString(),timeout:30000,responseType:'json'});
        if(!response.data?.ok||!Array.isArray(response.data.payload?.rooms))fail('Il Web App non restituisce uno snapshot valido con la chiave Google esistente. Nessun invio al foglio eseguito.');
-       console.log('Web App verificato in lettura; snapshot disponibile.');
+       if(command==='backup-data'){savePrivate('data-backup-'+Date.now()+'.json',response.data.payload);console.log('Backup completo del foglio salvato privatamente. Nessun dato modificato.');}
+       else if(command==='update-catalog'){
+         const currentBackend=prepareRemoteFiles(live,fs.readFileSync(path.join(repo,'AppsScript_Spazi_BIO.gs'),'utf8'));
+         if(canonicalFiles(currentBackend)!==canonicalFiles(live))fail('Il Web App non espone ancora il backend aggiornato. Attendi la propagazione e riprova.');
+         const original=response.data.payload;
+         savePrivate('data-backup-'+Date.now()+'.json',original);
+         const html=fs.readFileSync(path.join(repo,'index.html'),'utf8'),match=html.match(/function applySeatCatalog\(data\)\{[\s\S]*?\n\}/);
+         if(!match)fail('Regole del catalogo non trovate. Nessun invio eseguito.');
+         const {runInNewContext}=await import('node:vm');const transform=runInNewContext(match[0]+';applySeatCatalog',Object.create(null),{timeout:1000});
+         const next=transform(JSON.parse(JSON.stringify(original)));next.generatedAt=new Date().toISOString();
+         const fresh=await request({url:url.toString(),timeout:30000,responseType:'json'});
+         if(!fresh.data?.ok||JSON.stringify(fresh.data.payload)!==JSON.stringify(original))fail('Il foglio è cambiato durante la preparazione. Nessun invio eseguito.');
+         const result=await request({url:apps[0].url,method:'POST',data:JSON.stringify({secret:key,payload:next}),headers:{'Content-Type':'text/plain;charset=utf-8'},timeout:60000,responseType:'json'});
+         if(!result.data?.ok)fail('Aggiornamento catalogo non confermato dal Web App.');
+         url.searchParams.set('_',String(Date.now()));const verified=await request({url:url.toString(),timeout:30000,responseType:'json'});
+         if(!verified.data?.ok||verified.data.payload.generatedAt!==next.generatedAt||JSON.stringify(verified.data.payload.rooms)!==JSON.stringify(next.rooms))fail('Aggiornamento inviato ma controllo dello snapshot non riuscito.');
+         console.log('Catalogo condiviso aggiornato e riletto: etichette JOLLY e rimozione postazione 12 in 301.');
+       }
+       if(command==='verify')console.log('Web App verificato in lettura; snapshot disponibile.');
        console.log('Versione:',config.versionNumber,'· Stanze:',response.data.payload.rooms.length,'· Schema:',response.data.payload.schemaVersion);
-       console.log('Nessun dato scritto nel foglio.');
+       if(command!=='update-catalog')console.log('Nessun dato scritto nel foglio.');
      }else{
        const head=(await api.projects.getContent({scriptId:SCRIPT_ID})).data.files;
        let files;try{files=prepareRemoteFiles(head,fs.readFileSync(path.join(repo,'AppsScript_Spazi_BIO.gs'),'utf8'))}catch(e){fail(e.message)}

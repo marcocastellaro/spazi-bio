@@ -267,3 +267,33 @@ Le date di inizio e fine sono inclusive; è possibile interrogare anche un solo
 giorno. Un intervallo invertito o incompleto richiede una correzione senza
 mostrare una barra fuorviante. Le scadenze contrattuali sotto i nomi rimangono
 invariate quando si cambia l'intervallo di consultazione.
+
+
+## Postazioni JOLLY e catalogo aggiornato
+
+La postazione **9 della 209** e la **11 della 301** hanno l'etichetta **JOLLY**.
+Identificativi e numeri restano stabili; il nome completo compare nelle schede,
+nelle piante, nei selettori, nei backup e nelle tabelle del foglio. La postazione
+**12 della 301** è rimossa; la sua eventuale cella nella pianta resta libera.
+La migrazione si applica anche ai dati già salvati nel browser e agli snapshot
+letti dal Web App. Il backend applica le stesse regole agli invii provenienti
+da browser con una versione precedente, evitando che reintroducano la 12.
+
+Per modificare il catalogo condiviso tramite API, il comando
+`node scripts/google-oauth.mjs backup-data` salva prima una copia privata dello
+snapshot; `update-catalog` applica soltanto le regole del catalogo ai dati attuali,
+verifica che il foglio non sia cambiato durante la preparazione, esegue un invio
+e rilegge il risultato. Questi comandi non caricano i dati iniziali del repository
+al posto delle modifiche salvate dall'utente.
+
+## Stampa della scheda Postazioni
+
+Il pulsante **🖨️ Stampa / PDF** apre il pannello di stampa del browser, da cui
+scegliere **Salva come PDF**. Su iPhone usa le opzioni di stampa/condivisione
+dell'anteprima per salvare il PDF. La stampa segue stanza, ricerca e intervallo
+visualizzati nella scheda Postazioni.
+
+Il layout è A4 orizzontale, con una stanza per pagina, mantenendo celle fisse,
+postazioni JOLLY, barre colorate e scadenze. Menu, filtri e comandi dell'app
+sono esclusi. Se il browser propone intestazioni/piè di pagina propri (URL e
+numero pagina), puoi disabilitarli nelle opzioni del pannello di stampa.
