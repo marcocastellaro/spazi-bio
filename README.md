@@ -14,7 +14,7 @@ Mini-app mobile-first per gestire le postazioni BIO@DEI.
 - Durante il periodo all'estero la postazione viene considerata libera per gli assegnatari temporanei.
 - Le sovrapposizioni vengono segnalate solo quando un temporaneo occupa la postazione mentre il titolare risulta presente, oppure quando i due temporanei si sovrappongono.
 - Vista calendario compatta con barre temporali e conflitti.
-- Barra di utilizzo annuale per ogni postazione, dal 1 novembre al 31 ottobre (predefinito 2026–2027), con selettore dell’anno.
+- Barra di utilizzo per ogni postazione basata sulle date Dal–Al impostate in alto. I periodi novembre–ottobre sono preselezioni; sono ammessi intervalli personalizzati.
 - Rosso: titolare presente; giallo: uso temporaneo; verde: disponibile, incluse le assenze del titolare. In caso di sovrapposizione la barra mostra l’uso temporaneo e rimane la segnalazione di conflitto.
 - Una data di inizio vuota indica un’assegnazione già iniziata; una fine vuota indica un’assegnazione senza scadenza.
 - Backup/export JSON e CSV.
@@ -251,5 +251,19 @@ Gli spostamenti si salvano sul dispositivo: premi **Invia** per condividerli sul
 Google Sheet. In consultazione gli spostamenti sono disabilitati.
 
 Sotto il nome del titolare è mostrata la **fine del contratto** con data completa;
-la barra continua a rappresentare solo l'anno selezionato, novembre–ottobre.
+la barra rappresenta solo l'intervallo Dal–Al selezionato, indipendentemente dalla durata del contratto.
 Per gli utilizzatori temporanei le date sono etichettate come periodo di uso.
+
+
+## Intervallo delle barre
+
+In alto nella scheda **Postazioni**, scegli un **Periodo** novembre–ottobre
+oppure modifica **Dal** e **Al**: in questo caso la selezione passa a
+**Personalizzato**. Tutte le barre si aggiornano sullo stesso intervallo, anche
+nel calendario. Sulle schede non viene ripetuta l'intestazione “Utilizzo” con
+le date; i mesi sotto la barra si adattano al periodo scelto. I nomi dei
+subentranti restano nei tratti gialli e, toccandoli, si vedono le date del tratto.
+Le date di inizio e fine sono inclusive; è possibile interrogare anche un solo
+giorno. Un intervallo invertito o incompleto richiede una correzione senza
+mostrare una barra fuorviante. Le scadenze contrattuali sotto i nomi rimangono
+invariate quando si cambia l'intervallo di consultazione.
