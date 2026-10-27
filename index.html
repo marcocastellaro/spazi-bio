@@ -25,13 +25,15 @@ main{padding:12px;max-width:1100px;margin:auto} .toolbar{display:flex;gap:8px;fl
 .floorGrid{display:grid;grid-template-columns:repeat(var(--floor-cols),minmax(0,1fr));gap:6px;margin-top:10px;max-width:650px}.floorCell{position:relative;min-width:0;height:94px;border:1px dashed #a8b4c4;border-radius:10px;background:#f8fafc;color:var(--ink);padding:5px;font:inherit;cursor:pointer}.floorCell.empty{color:#64748b;font-size:11px}.floorCell.desk{background:#eaf0ff;border:2px solid #bacbf2;touch-action:none;user-select:none;-webkit-user-select:none}.floorCell.selected{border-color:#2457d6;box-shadow:0 0 0 2px #2457d6}.floorCell.dropTarget{background:#dcfce7;border-color:#15803d}.floorCell.moving{opacity:.55}.floorCell:focus-visible{outline:3px solid #2457d6;outline-offset:2px}.floorNumber{display:block;font-weight:800;font-size:16px}.floorPerson{display:block;font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:4px}.floorCoordinate{display:block;font-size:9px;color:#64748b;margin-top:5px}.floorActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 
 .roomBoard{overflow-x:auto;padding:3px 3px 10px;overscroll-behavior-x:contain}.roomBoard .grid{grid-template-columns:repeat(var(--room-cols),minmax(220px,1fr));min-width:calc(var(--room-cols)*220px + (var(--room-cols) - 1)*8px)}.seatEmpty{border:1px dashed #b6c2d2;border-radius:12px;min-height:100px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;background:#f8fafc}.roomBoardHint{font-size:11px;color:var(--muted);margin:0 0 8px}
+
+.assignmentName.personMove{display:block;border:0;background:transparent;padding:0;text-align:left;font:inherit;color:inherit;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.personMove::after{content:' ↔';font-size:12px;color:#2457d6}.personMove:focus-visible{outline:2px solid #2457d6;border-radius:3px}.personDragGhost{position:fixed;z-index:100;pointer-events:none;max-width:230px;padding:9px 12px;border-radius:10px;background:#2457d6;color:white;font-weight:700;box-shadow:0 3px 12px #0004}.seat.personDropTarget{outline:3px solid #2457d6;outline-offset:-3px}.moveHint{font-size:12px;color:var(--muted);margin-bottom:12px}
 </style></head><body>
 <div id="authGate" class="authGate"><form id="authForm" class="authCard"><h2>Spazi BIO@DEI</h2><p>Inserisci la password per accedere alla gestione delle postazioni.</p><label>Password<input id="authPassword" type="password" autocomplete="current-password" inputmode="text" placeholder="Password"></label><div class="actions"><button class="btn sendTop" type="submit">Accedi</button></div><div id="authMsg" class="authMsg" aria-live="polite"></div></form></div>
 <div id="appRoot" class="appLocked">
 <header><h1>Spazi BIO@DEI</h1><nav><button data-tab="map" class="active">Postazioni</button><button data-tab="layouts">Piante</button><button data-tab="calendar">Calendario</button><button data-tab="review">Verifiche</button><button data-tab="tools">Configurazione</button><button id="sendSheetTop" class="sendTop">Invia</button><button id="lockApp">Blocca</button></nav><div id="topSyncStatus" class="topstatus">Non sincronizzato</div></header>
 <div id="consultationNotice" class="banner hidden" role="status">Consultazione dal foglio · sola lettura. Per modificare, usa “Torna alla modifica” in Configurazione.</div>
 <main>
-<section id="map"><div class="banner">Ogni posto può avere un assegnatario principale e fino a 2 utilizzatori temporanei. Le barre rosse indicano sovrapposizioni nel periodo visualizzato.</div><div class="toolbar"><label>Stanza<select id="roomFilter"><option value="">Tutte</option></select></label><label>Anno novembre–ottobre<select id="occupancyYear"><option value="2024">2024–2025</option><option value="2025">2025–2026</option><option value="2026" selected>2026–2027</option><option value="2027">2027–2028</option><option value="2028">2028–2029</option><option value="2029">2029–2030</option><option value="2030">2030–2031</option></select></label><label>Dal<input type="date" id="rangeStart" value="2026-11-01"></label><label>Al<input type="date" id="rangeEnd" value="2027-10-31"></label><label style="flex:1">Cerca<input id="mapSearch" placeholder="Nome o supervisore"></label></div><div class="legend"><span><i class="dot"></i>principale</span><span><i class="dot t1"></i>temporaneo 1</span><span><i class="dot t2"></i>temporaneo 2</span><span><i class="dot" style="background:#86efac"></i>all’estero / posto libero</span><span><i class="dot c"></i>sovrapposizione</span></div><div id="rooms"></div></section>
+<section id="map"><div class="banner">Ogni posto può avere un assegnatario principale e fino a 2 utilizzatori temporanei. Tocca o trascina un nome ↔ per spostarlo in un’altra postazione, anche di un’altra stanza. Gli avvisi segnalano le sovrapposizioni.</div><div class="toolbar"><label>Stanza<select id="roomFilter"><option value="">Tutte</option></select></label><label>Anno novembre–ottobre<select id="occupancyYear"><option value="2024">2024–2025</option><option value="2025">2025–2026</option><option value="2026" selected>2026–2027</option><option value="2027">2027–2028</option><option value="2028">2028–2029</option><option value="2029">2029–2030</option><option value="2030">2030–2031</option></select></label><label>Dal<input type="date" id="rangeStart" value="2026-11-01"></label><label>Al<input type="date" id="rangeEnd" value="2027-10-31"></label><label style="flex:1">Cerca<input id="mapSearch" placeholder="Nome o supervisore"></label></div><div class="legend"><span><i class="dot"></i>principale</span><span><i class="dot t1"></i>temporaneo 1</span><span><i class="dot t2"></i>temporaneo 2</span><span><i class="dot" style="background:#86efac"></i>all’estero / posto libero</span><span><i class="dot c"></i>sovrapposizione</span></div><div id="rooms"></div></section>
 <section id="layouts" class="hidden"><div class="banner">Trascina una postazione su una cella, oppure tocca prima la postazione e poi la destinazione. Su una cella occupata le due postazioni si scambiano. Le disposizioni sono salvate su questo dispositivo e incluse nel backup JSON.</div><p id="layoutStatus" class="small" role="status" aria-live="polite"></p><div id="layoutRooms"></div></section>
 <section id="calendar" class="hidden"><div class="banner">Vista compatta delle sole postazioni con almeno un'assegnazione nel periodo selezionato.</div><div id="calendarRows"></div></section>
 <section id="review" class="hidden"><div class="banner">Verifiche già emerse confrontando Excel e mail. Puoi marcarle come risolte.</div><div id="reviews"></div></section>
@@ -115,7 +117,9 @@ function showOccupancyDetail(event){
 document.addEventListener('click',showOccupancyDetail);
 document.addEventListener('focusin',showOccupancyDetail);
 function timelineHtml(s){let a=parseDate(document.getElementById('rangeStart').value),b=parseDate(document.getElementById('rangeEnd').value);if(a==null||b==null||b<=a)return '<div class="small">Intervallo calendario non valido</div>';let bad=seatConflicts(s),abs=s.absences||[];let chips=abs.filter(x=>x.start&&x.end).map(x=>`<span class="absenceChip">${esc(x.label||'Estero')}: ${esc(x.start)} → ${esc(x.end)}</span>`).join('');return `<div class="timeline"><div class="track">${abs.map(x=>absenceHtml(x,a,b)).join('')}${barHtml(s.primary,'primary',bad.has('primary'),a,b)}${barHtml(s.temporary[0],'temp1',bad.has('temp1'),a,b)}${barHtml(s.temporary[1],'temp2',bad.has('temp2'),a,b)}</div><div class="ticks"><span>${esc(document.getElementById('rangeStart').value)}</span><span>${esc(document.getElementById('rangeEnd').value)}</span></div>${chips?`<div class="absenceList">${chips}</div>`:''}</div>`}
-function assignmentText(p){if(!p)return'';return `${esc(fullName(p))}<div class="meta">${esc(p.start||'già iniziato')} → ${esc(p.end||'fine ?')}${p.supervisor?'<br>'+esc(p.supervisor):''}</div>`}
+function displayDate(value){const timestamp=parseDate(value);return timestamp==null?esc(value||'non indicata'):new Date(timestamp).toLocaleDateString('it-IT',{timeZone:'UTC',day:'2-digit',month:'2-digit',year:'numeric'})}
+function assignmentText(p,temporary=false){if(!p)return'';const dates=temporary?`Uso temporaneo: ${p.start?displayDate(p.start):'già iniziato'} → ${p.end?displayDate(p.end):'senza scadenza indicata'}`:`Fine contratto: ${displayDate(p.end)}`;return `<span class="assignmentName">${esc(fullName(p))}</span><div class="meta">${dates}${p.supervisor?'<br>'+esc(p.supervisor):''}</div>`}
+
 function renderRooms(){
   const host=document.getElementById('rooms');host.innerHTML='';
   const filter=document.getElementById('roomFilter').value,query=document.getElementById('mapSearch').value.toLowerCase();
@@ -132,16 +136,83 @@ function renderRooms(){
         el.className='seatEmpty';el.textContent=seat?'Postazione '+seat.number+' · fuori ricerca':'Cella libera';
         grid.appendChild(el);return;
       }
-      const bad=seatConflicts(seat);el.className='seat'+(bad.size?' overlap':'');
-      const temps=seat.temporary.map((person,i)=>`<div class="temp"><b>Temporaneo ${i+1}</b><br>${assignmentText(person)}</div>`).join('');
+      const bad=seatConflicts(seat);el.className='seat'+(bad.size?' overlap':'');el.dataset.room=ri;el.dataset.seat=deskKey(seat);
+      const temps=seat.temporary.map((person,i)=>`<div class="temp"><b>Temporaneo ${i+1}</b><br>${assignmentText(person,true)}</div>`).join('');
       el.innerHTML=`<div class="seatno"><span>Postazione ${esc(seat.number)}</span>${bad.size?'<span class="badge bad">Sovrapposizione</span>':''}</div><div class="person">${seat.primary?assignmentText(seat.primary):'<span class="small">Nessun assegnatario principale</span>'}</div>${temps}${occupancyHtml(seat)}<div class="actions"><button class="mini" data-edit>Modifica</button></div>`;
-      el.querySelector('[data-edit]').onclick=()=>openEdit(ri,si);grid.appendChild(el);
+      el.querySelector('[data-edit]').onclick=()=>openEdit(ri,si);
+      const mainName=el.querySelector('.person .assignmentName');if(mainName)bindPersonMove(mainName,{ri,key:deskKey(seat),kind:'primary'});
+      el.querySelectorAll('.temp .assignmentName').forEach((name,slot)=>bindPersonMove(name,{ri,key:deskKey(seat),kind:'temporary',slot}));
+      grid.appendChild(el);
     });
     host.appendChild(room);
   });
 }
 
-function personFields(prefix,p,label){p=p||{};return `<div class="sectionTitle wide">${label}</div><label class="wide">Nome e cognome<input id="${prefix}_name" value="${esc(fullName(p))}" placeholder="Lascia vuoto per nessuno"></label><label>Dal<input id="${prefix}_start" type="date" value="${esc(p.start||'')}"></label><label>Al<input id="${prefix}_end" type="date" value="${esc(p.end||'')}"></label><label class="wide">Ruolo / note<input id="${prefix}_position" value="${esc(p.position||p.note||'')}"></label><label class="wide">Supervisore<input id="${prefix}_supervisor" value="${esc(p.supervisor||'')}"></label>`}
+let personSuppressClickUntil=0;
+function personSeat(ref){return state.rooms[ref.ri]?.seats.find(s=>deskKey(s)===ref.key)}
+function referencedPerson(ref){const seat=personSeat(ref);return ref.kind==='primary'?seat?.primary:seat?.temporary[ref.slot]}
+function transferPerson(source,target){
+  if(consultationMode)return false;
+  const from=personSeat(source),to=personSeat(target),person=referencedPerson(source);
+  if(!from||!to||from===to||!person||source.kind!==target.kind)return false;
+  if(source.kind==='primary'){
+    const other=to.primary,absence=from.absences||[];
+    from.primary=other||null;from.absences=other?(to.absences||[]):[];
+    to.primary=person;to.absences=absence;
+  }else{
+    if(!Number.isInteger(target.slot)||target.slot<0||target.slot>to.temporary.length||target.slot>1)return false;
+    const other=to.temporary[target.slot];
+    if(other){from.temporary[source.slot]=other;to.temporary[target.slot]=person}
+    else{from.temporary.splice(source.slot,1);to.temporary.push(person)}
+  }
+  layoutSelection=null;save();return true;
+}
+function openPersonMove(source,destination){
+  if(consultationMode)return;
+  const person=referencedPerson(source);if(!person)return;
+  const host=document.getElementById('dialogHost');
+  host.innerHTML=`<div class="dialogBack"><form class="dialog"><h3>Sposta ${esc(fullName(person))}</h3><p class="moveHint">${source.kind==='primary'?'Il titolare mantiene contratto e assenze.':'L’utilizzatore mantiene il suo periodo temporaneo.'} Se la destinazione è occupata, le due persone si scambiano. Le scrivanie restano nella loro posizione.</p><div class="formgrid"><label class="wide">Stanza di destinazione<select id="moveRoom"></select></label><label class="wide">Postazione di destinazione<select id="moveSeat"></select></label><label class="wide" id="moveSlotLabel">Utilizzo temporaneo<select id="moveSlot"></select></label></div><p id="movePreview" class="banner" aria-live="polite"></p><div class="actions"><button class="btn" type="submit" id="confirmPersonMove">Sposta</button><button class="btn" type="button" data-cancel>Annulla</button></div></form></div>`;
+  const rooms=host.querySelector('#moveRoom'),seats=host.querySelector('#moveSeat'),slots=host.querySelector('#moveSlot'),preview=host.querySelector('#movePreview'),confirm=host.querySelector('#confirmPersonMove');
+  const option=(select,value,text)=>{const o=document.createElement('option');o.value=value;o.textContent=text;select.appendChild(o)};
+  state.rooms.forEach((r,ri)=>option(rooms,ri,r.name));rooms.value=String(destination?.ri??source.ri);
+  function selectedTarget(){return {ri:Number(rooms.value),key:seats.value,kind:source.kind,slot:Number(slots.value)}}
+  function updatePreview(){
+    const target=selectedTarget(),seat=personSeat(target),other=referencedPerson(target);
+    confirm.disabled=!seat;confirm.textContent=other?'Scambia le persone':'Sposta persona';
+    preview.textContent=seat?(other?`Scambio con ${fullName(other)}. Entrambe le assegnazioni saranno conservate.`:'Destinazione libera: contratto e date della persona saranno conservati.'):'Scegli un’altra postazione.';
+  }
+  function updateSlots(){
+    slots.innerHTML='';const seat=personSeat(selectedTarget());
+    host.querySelector('#moveSlotLabel').classList.toggle('hidden',source.kind==='primary');
+    if(source.kind==='temporary'&&seat){seat.temporary.forEach((p,i)=>option(slots,i,`Temporaneo ${i+1}: ${fullName(p)}`));if(seat.temporary.length<2)option(slots,seat.temporary.length,'Aggiungi utilizzo temporaneo');if(seat.temporary.length<2)slots.value=String(seat.temporary.length)}
+    updatePreview();
+  }
+  function updateSeats(){
+    seats.innerHTML='';const r=state.rooms[Number(rooms.value)];r.seats.forEach(s=>{if(Number(rooms.value)===source.ri&&deskKey(s)===source.key)return;option(seats,deskKey(s),'Postazione '+s.number)});
+    if(destination&&Number(rooms.value)===destination.ri&&[...seats.options].some(o=>o.value===destination.key))seats.value=destination.key;
+    updateSlots();
+  }
+  rooms.onchange=updateSeats;seats.onchange=updateSlots;slots.onchange=updatePreview;updateSeats();
+  host.querySelector('[data-cancel]').onclick=()=>host.innerHTML='';
+  host.querySelector('form').onsubmit=event=>{event.preventDefault();if(referencedPerson(source)!==person){preview.textContent='L’assegnazione è cambiata. Chiudi e riapri lo spostamento.';return}if(transferPerson(source,selectedTarget()))host.innerHTML=''};
+}
+function bindPersonMove(label,source){
+  const button=document.createElement('button');button.type='button';button.className='assignmentName personMove';button.textContent=label.textContent;button.setAttribute('aria-label','Sposta '+label.textContent);label.replaceWith(button);
+  button.onclick=()=>{if(Date.now()>=personSuppressClickUntil)openPersonMove(source)};
+  button.addEventListener('pointerdown',event=>{
+    if(consultationMode||event.button!==0||!event.isPrimary)return;
+    const pointer=event.pointerId,x=event.clientX,y=event.clientY;let lastX=x,lastY=y,dragged=false,ghost=null,target=null,frame;
+    button.setPointerCapture(pointer);
+    function hit(){document.querySelectorAll('.personDropTarget').forEach(e=>e.classList.remove('personDropTarget'));target=document.elementFromPoint(lastX,lastY)?.closest('.seat[data-seat]');if(target&&!(Number(target.dataset.room)===source.ri&&target.dataset.seat===source.key))target.classList.add('personDropTarget');else target=null}
+    function scroll(){if(dragged){const margin=55;let delta=lastY<margin?-12:lastY>innerHeight-margin?12:0;if(delta)window.scrollBy(0,delta);const board=document.elementFromPoint(lastX,lastY)?.closest('.roomBoard');if(board){const box=board.getBoundingClientRect();board.scrollLeft+=lastX<box.left+35?-10:lastX>box.right-35?10:0}hit()}frame=requestAnimationFrame(scroll)}
+    const clear=()=>{cancelAnimationFrame(frame);ghost?.remove();document.querySelectorAll('.personDropTarget').forEach(e=>e.classList.remove('personDropTarget'));button.removeEventListener('pointermove',move);button.removeEventListener('pointerup',end);button.removeEventListener('pointercancel',cancel)};
+    const move=e=>{if(e.pointerId!==pointer)return;lastX=e.clientX;lastY=e.clientY;if(!dragged&&Math.hypot(lastX-x,lastY-y)<8)return;if(!dragged){dragged=true;ghost=document.createElement('div');ghost.className='personDragGhost';ghost.textContent=button.textContent;document.body.appendChild(ghost);frame=requestAnimationFrame(scroll)}ghost.style.left=Math.min(innerWidth-150,Math.max(5,lastX+10))+'px';ghost.style.top=(lastY+12)+'px';hit()};
+    const end=e=>{if(e.pointerId!==pointer)return;const destination=target?{ri:Number(target.dataset.room),key:target.dataset.seat}:null;clear();if(dragged){personSuppressClickUntil=Date.now()+400;if(destination)openPersonMove(source,destination)}};
+    const cancel=()=>{clear();personSuppressClickUntil=Date.now()+400};
+    button.addEventListener('pointermove',move);button.addEventListener('pointerup',end);button.addEventListener('pointercancel',cancel);
+  });
+}
+function personFields(prefix,p,label){p=p||{};return `<div class="sectionTitle wide">${label}</div><label class="wide">Nome e cognome<input id="${prefix}_name" value="${esc(fullName(p))}" placeholder="Lascia vuoto per nessuno"></label><label>${prefix==='p'?'Inizio contratto':'Dal'}<input id="${prefix}_start" type="date" value="${esc(p.start||'')}"></label><label>${prefix==='p'?'Fine contratto':'Al'}<input id="${prefix}_end" type="date" value="${esc(p.end||'')}"></label><label class="wide">Ruolo / note<input id="${prefix}_position" value="${esc(p.position||p.note||'')}"></label><label class="wide">Supervisore<input id="${prefix}_supervisor" value="${esc(p.supervisor||'')}"></label>`}
 function absenceFields(abs){abs=abs||[];let a=abs[0]||{};return `<div class="sectionTitle wide">Periodo all’estero / assenza del principale</div><div class="small wide">Durante questo intervallo la postazione viene considerata libera per gli assegnatari temporanei.</div><div class="absenceFields wide"><label>Descrizione<input id="a0_label" value="${esc(a.label||'Estero')}" placeholder="es. Periodo all’estero"></label><div class="formgrid"><label>Dal<input id="a0_start" type="date" value="${esc(a.start||'')}"></label><label>Al<input id="a0_end" type="date" value="${esc(a.end||'')}"></label></div></div>`}
 function readAbsences(){let start=document.getElementById('a0_start').value,end=document.getElementById('a0_end').value,label=document.getElementById('a0_label').value.trim()||'Estero';return (start||end)?[{label,start,end}]:[]}
 function readPerson(prefix,old){let nm=document.getElementById(prefix+'_name').value.trim();if(!nm)return null;let parts=nm.split(/\s+/);return {...(old||{}),name:parts.shift(),surname:parts.join(' '),start:document.getElementById(prefix+'_start').value,end:document.getElementById(prefix+'_end').value,position:document.getElementById(prefix+'_position').value.trim(),supervisor:document.getElementById(prefix+'_supervisor').value.trim()}}
@@ -217,7 +288,7 @@ function renderLayouts(){
 function renderConsultation(){
   document.getElementById('consultationNotice').classList.toggle('hidden',!consultationMode);
   document.getElementById('resumeEditing').classList.toggle('hidden',!consultationMode);
-  document.querySelectorAll('[data-edit],#layoutRooms button,#reviews button,#importBtn,#importFile,#resetBtn,#sendSheet,#sendSheetTop').forEach(el=>el.disabled=consultationMode);
+  document.querySelectorAll('[data-edit],.personMove,#layoutRooms button,#reviews button,#importBtn,#importFile,#resetBtn,#sendSheet,#sendSheetTop').forEach(el=>el.disabled=consultationMode);
 }
 function render(){renderRooms();renderCalendar();renderReviews();renderLayouts();renderConsultation()}
 

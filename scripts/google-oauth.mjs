@@ -4,6 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createRequire} from 'node:module';
+import {prepareRemoteFiles,canonicalFiles,sharedKey,webApps} from './apps-script-update.mjs';
 const repo=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const toolRoot=process.env.SPAZI_BIO_GOOGLE_TOOLS||path.resolve(repo,'../spazi-bio-tools');
 const privateRoot=process.env.SPAZI_BIO_GOOGLE_PRIVATE||path.resolve(repo,'../.private/spazi-bio-google');
@@ -14,6 +15,7 @@ function fail(message){const error=new Error(message);error.publicMessage=messag
 function savePrivate(name,data){fs.mkdirSync(privateRoot,{recursive:true,mode:0o700});fs.writeFileSync(path.join(privateRoot,name),JSON.stringify(data),{mode:0o600});}
 function readPrivate(name){const p=path.join(privateRoot,name);if(!fs.existsSync(p))fail('Accesso non ancora configurato: esegui prima prepare, poi complete.');return JSON.parse(fs.readFileSync(p,'utf8'))}
 const command=process.argv[2]||'status';
+let stage='initialization';
 try{
  const {getUnauthorizedOuth2Client}=await import(pathToFileURL(path.join(toolRoot,'node_modules/@google/clasp/build/src/auth/auth.js')).href);
  const client=getUnauthorizedOuth2Client();
@@ -40,18 +42,65 @@ try{
  }else if(command==='status'){
    console.log('OAuth configurato:',fs.existsSync(path.join(privateRoot,'tokens.json')));
    console.log('Richiesta di consenso preparata:',fs.existsSync(path.join(privateRoot,'pending.json')));
- }else if(command==='check'){
+ }else if(['check','inspect','deploy','verify'].includes(command)){
    const credentials=readPrivate('tokens.json');client.setCredentials(credentials);
    client.on('tokens',tokens=>{Object.assign(credentials,tokens);savePrivate('tokens.json',credentials)});
    const require=createRequire(path.join(toolRoot,'package.json'));
    const {google}=require('googleapis');const api=google.script({version:'v1',auth:client});
-   const [project,deployment]=await Promise.all([api.projects.get({scriptId:SCRIPT_ID}),api.projects.deployments.get({scriptId:SCRIPT_ID,deploymentId:DEPLOYMENT_ID})]);
-   console.log('Accesso al progetto verificato:',project.data.title);
-   console.log('Distribuzione esistente raggiungibile:',Boolean(deployment.data.deploymentId));
-   console.log('Nessuna modifica eseguita.');
- }else fail('Comando non riconosciuto. Usa prepare, complete, status o check.');
+   if(command==='check'){
+     const [project,deployment]=await Promise.all([api.projects.get({scriptId:SCRIPT_ID}),api.projects.deployments.get({scriptId:SCRIPT_ID,deploymentId:DEPLOYMENT_ID})]);
+     console.log('Accesso al progetto verificato:',project.data.title);
+     console.log('Distribuzione esistente raggiungibile:',Boolean(deployment.data.deploymentId));
+     console.log('Nessuna modifica eseguita.');
+   }else{
+     const deployment=(await api.projects.deployments.get({scriptId:SCRIPT_ID,deploymentId:DEPLOYMENT_ID})).data;
+     const config=deployment.deploymentConfig;
+     const live=(await api.projects.getContent({scriptId:SCRIPT_ID,versionNumber:config.versionNumber})).data.files;
+     if(command==='verify'){
+       const key=sharedKey(live),apps=webApps(deployment);if(apps.length!==1)fail('Web App non univoco: verifica interrotta.');
+       const url=new URL(apps[0].url);url.searchParams.set('action','load');url.searchParams.set('secret',key);url.searchParams.set('_',String(Date.now()));
+       const {request}=require('gaxios');
+       const response=await request({url:url.toString(),timeout:30000,responseType:'json'});
+       if(!response.data?.ok||!Array.isArray(response.data.payload?.rooms))fail('Il Web App non restituisce uno snapshot valido con la chiave Google esistente. Nessun invio al foglio eseguito.');
+       console.log('Web App verificato in lettura; snapshot disponibile.');
+       console.log('Versione:',config.versionNumber,'· Stanze:',response.data.payload.rooms.length,'· Schema:',response.data.payload.schemaVersion);
+       console.log('Nessun dato scritto nel foglio.');
+     }else{
+       const head=(await api.projects.getContent({scriptId:SCRIPT_ID})).data.files;
+       let files;try{files=prepareRemoteFiles(head,fs.readFileSync(path.join(repo,'AppsScript_Spazi_BIO.gs'),'utf8'))}catch(e){fail(e.message)}
+       const headChanged=canonicalFiles(head)!==canonicalFiles(files),liveChanged=canonicalFiles(live)!==canonicalFiles(files);
+       console.log('Codice da sincronizzare:',headChanged,'· Distribuzione da aggiornare:',liveChanged);
+       console.log('Chiave Google e altri file preservati. Versione corrente:',config.versionNumber);
+       if(command==='inspect')console.log('Nessuna modifica eseguita.');
+       else if(headChanged||liveChanged){
+         const backupName='backup-'+Date.now()+'.json';savePrivate(backupName,{files:head,deployment});
+         const fresh=(await api.projects.getContent({scriptId:SCRIPT_ID})).data.files;
+         if(canonicalFiles(fresh)!==canonicalFiles(head))fail('Il progetto è cambiato durante la preparazione: nessun file sovrascritto.');
+         if(headChanged)await api.projects.updateContent({scriptId:SCRIPT_ID,requestBody:{files}});
+         const uploaded=(await api.projects.getContent({scriptId:SCRIPT_ID})).data.files;
+         if(canonicalFiles(uploaded)!==canonicalFiles(files))fail('Il controllo del codice caricato non corrisponde: distribuzione non aggiornata.');
+         if(liveChanged){
+           stage='create-version';
+           const version=(await api.projects.versions.create({scriptId:SCRIPT_ID,requestBody:{description:'Spazi BIO · aggiornamento da repository'}})).data;
+           stage='update-deployment';
+           await api.projects.deployments.update({scriptId:SCRIPT_ID,deploymentId:DEPLOYMENT_ID,requestBody:{deploymentConfig:{...config,versionNumber:version.versionNumber}}});
+           const updated=(await api.projects.deployments.get({scriptId:SCRIPT_ID,deploymentId:DEPLOYMENT_ID})).data;
+           if(JSON.stringify(webApps(updated))!==JSON.stringify(webApps(deployment))){
+             await api.projects.deployments.update({scriptId:SCRIPT_ID,deploymentId:DEPLOYMENT_ID,requestBody:{deploymentConfig:config}});
+             fail('Le impostazioni Web App sono cambiate: ripristinata la distribuzione precedente.');
+           }
+           const published=(await api.projects.getContent({scriptId:SCRIPT_ID,versionNumber:version.versionNumber})).data.files;
+           if(canonicalFiles(published)!==canonicalFiles(files))fail('Contenuto pubblicato non corrispondente: verificare la distribuzione.');
+           console.log('Distribuzione aggiornata alla versione',version.versionNumber);
+         }
+         console.log('Codice verificato; URL, accesso e chiave mantenuti. Backup privato creato.');
+       }else console.log('Codice e distribuzione sono già allineati.');
+     }
+   }
+ }else fail('Comando non riconosciuto. Usa prepare, complete, status, check, inspect, deploy o verify.');
 }catch(error){
  const status=Number(error.response?.status)||null;
+ if(status===403){const remote=error.response?.data?.error;console.error('Google API:',stage,'·',remote?.status||'PERMISSION_DENIED');if(typeof remote?.message==='string')console.error(remote.message.replace(/https?:\/\/\S+/g,'[link Google]'));}
  const oauthError=error.response?.data?.error;
  const safeCode=typeof oauthError==='string'&&/^[a-z_]+$/.test(oauthError)?oauthError:null;
  console.error(error.publicMessage||`Operazione Google non completata${status?' (HTTP '+status+')':''}${safeCode?' · '+safeCode:''}. Verifica accesso di rete, consenso e abilitazione API Apps Script.`);

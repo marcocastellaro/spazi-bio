@@ -205,7 +205,51 @@ possono essere personalizzati con `SPAZI_BIO_GOOGLE_TOOLS` e
 
 Il test `tests/google-oauth.test.cjs` verifica preparazione, riuso della
 richiesta, scope, PKCE, permessi dei file e rifiuto di uno state errato senza
-contattare Google. Il collegamento reale resta da verificare con il consenso
-dell'utente. Il comando non aggiorna ancora il codice remoto: un futuro invio
-tramite API dovrà mantenere la chiave `SECRET` e le impostazioni della
-distribuzione esistente.
+contattare Google. Il collegamento OAuth e la lettura della distribuzione esistente sono stati
+verificati nell'ambiente cloud. Per pubblicare, abilita l'API Apps Script per
+l'account proprietario e usa i comandi descritti qui sotto.
+
+
+## Pubblicazione Apps Script tramite API
+
+Con OAuth già configurato:
+
+```sh
+node scripts/google-oauth.mjs inspect
+node scripts/google-oauth.mjs deploy
+node scripts/google-oauth.mjs verify
+```
+
+`inspect` confronta il backend del repository con il codice Google e la versione
+pubblicata. `deploy` conserva la chiave `SECRET` presente su Google, il manifest e
+gli altri file remoti; prepara un backup privato fuori Git, crea una versione
+quando necessaria e aggiorna la distribuzione esistente. URL, modalità di
+esecuzione e accesso vengono verificati dopo l'aggiornamento. Se sono cambiati,
+il comando ripristina la versione della distribuzione precedente. Il codice
+caricato viene confrontato con quello previsto, e un secondo invio a codice
+invariato non crea un'altra versione.
+
+`verify` legge lo snapshot dal Web App usando la chiave presente nel codice
+pubblicato, senza stamparla e senza inviare dati al foglio. Le chiavi OAuth e
+la chiave condivisa reale non devono essere committate nel repository.
+Se Google risponde che l'API non è abilitata, attivala per l'account proprietario:
+https://script.google.com/home/usersettings .
+
+## Spostare le persone tra postazioni
+
+In **Postazioni**, tocca un nome con il simbolo ↔ per scegliere stanza e
+postazione di destinazione, oppure trascinalo su una scheda, anche di un'altra
+stanza. Vicino al bordo dello schermo la vista scorre durante il trascinamento.
+Dopo il rilascio scegli e conferma lo spostamento: nessuna assegnazione cambia
+prima della conferma. Una destinazione occupata propone uno **scambio**.
+
+I titolari restano titolari e portano con sé contratto e assenze. Gli utilizzatori
+temporanei restano temporanei; puoi scegliere uno spazio libero oppure scambiare
+uno dei due utilizzi esistenti. Il limite resta di due temporanei per postazione.
+Numero, identità e coordinate delle scrivanie non cambiano.
+Gli spostamenti si salvano sul dispositivo: premi **Invia** per condividerli sul
+Google Sheet. In consultazione gli spostamenti sono disabilitati.
+
+Sotto il nome del titolare è mostrata la **fine del contratto** con data completa;
+la barra continua a rappresentare solo l'anno selezionato, novembre–ottobre.
+Per gli utilizzatori temporanei le date sono etichettate come periodo di uso.
