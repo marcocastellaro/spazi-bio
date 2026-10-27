@@ -23,6 +23,8 @@ main{padding:12px;max-width:1100px;margin:auto} .toolbar{display:flex;gap:8px;fl
 .occupancy{margin-top:12px}.occupancyHeading{font-size:12px;font-weight:700;margin-bottom:6px}.occupancyTrack{display:flex;height:20px;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden;background:#16a34a}.occupancySegment{height:100%;min-width:0}.occupancySegment:focus{outline:2px solid #1d2733;outline-offset:-2px}.occupancySegment.primary,.occupancyLegend .primary{background:#dc2626}.occupancySegment.temporary,.occupancyLegend .temporary{background:#facc15}.occupancySegment.available,.occupancyLegend .available{background:#16a34a}.occupancyMonths{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));font-size:9px;color:var(--muted);margin-top:4px;text-align:center}.occupancyLegend{display:flex;gap:6px 10px;flex-wrap:wrap;font-size:10px;margin-top:6px}.occupancyLegend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px}
 
 .floorGrid{display:grid;grid-template-columns:repeat(var(--floor-cols),minmax(0,1fr));gap:6px;margin-top:10px;max-width:650px}.floorCell{position:relative;min-width:0;height:94px;border:1px dashed #a8b4c4;border-radius:10px;background:#f8fafc;color:var(--ink);padding:5px;font:inherit;cursor:pointer}.floorCell.empty{color:#64748b;font-size:11px}.floorCell.desk{background:#eaf0ff;border:2px solid #bacbf2;touch-action:none;user-select:none;-webkit-user-select:none}.floorCell.selected{border-color:#2457d6;box-shadow:0 0 0 2px #2457d6}.floorCell.dropTarget{background:#dcfce7;border-color:#15803d}.floorCell.moving{opacity:.55}.floorCell:focus-visible{outline:3px solid #2457d6;outline-offset:2px}.floorNumber{display:block;font-weight:800;font-size:16px}.floorPerson{display:block;font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:4px}.floorCoordinate{display:block;font-size:9px;color:#64748b;margin-top:5px}.floorActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+
+.roomBoard{overflow-x:auto;padding:3px 3px 10px;overscroll-behavior-x:contain}.roomBoard .grid{grid-template-columns:repeat(var(--room-cols),minmax(220px,1fr));min-width:calc(var(--room-cols)*220px + (var(--room-cols) - 1)*8px)}.seatEmpty{border:1px dashed #b6c2d2;border-radius:12px;min-height:100px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;background:#f8fafc}.roomBoardHint{font-size:11px;color:var(--muted);margin:0 0 8px}
 </style></head><body>
 <div id="authGate" class="authGate"><form id="authForm" class="authCard"><h2>Spazi BIO@DEI</h2><p>Inserisci la password per accedere alla gestione delle postazioni.</p><label>Password<input id="authPassword" type="password" autocomplete="current-password" inputmode="text" placeholder="Password"></label><div class="actions"><button class="btn sendTop" type="submit">Accedi</button></div><div id="authMsg" class="authMsg" aria-live="polite"></div></form></div>
 <div id="appRoot" class="appLocked">
@@ -33,7 +35,7 @@ main{padding:12px;max-width:1100px;margin:auto} .toolbar{display:flex;gap:8px;fl
 <section id="layouts" class="hidden"><div class="banner">Trascina una postazione su una cella, oppure tocca prima la postazione e poi la destinazione. Su una cella occupata le due postazioni si scambiano. Le disposizioni sono salvate su questo dispositivo e incluse nel backup JSON.</div><p id="layoutStatus" class="small" role="status" aria-live="polite"></p><div id="layoutRooms"></div></section>
 <section id="calendar" class="hidden"><div class="banner">Vista compatta delle sole postazioni con almeno un'assegnazione nel periodo selezionato.</div><div id="calendarRows"></div></section>
 <section id="review" class="hidden"><div class="banner">Verifiche già emerse confrontando Excel e mail. Puoi marcarle come risolte.</div><div id="reviews"></div></section>
-<section id="tools" class="hidden"><div class="room"><h2>Configurazione Google Sheet</h2><p><b>Da fare una sola volta su questo iPhone.</b> Incolla qui URL e chiave del Web App Apps Script. In seguito usa semplicemente il pulsante <b>Invia</b> in alto.</p><div class="syncbox"><label>URL Web App<input id="syncUrl" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec"></label><label style="margin-top:8px">Chiave condivisa<input id="syncKey" type="password" autocomplete="off" placeholder="La stessa impostata nello script"></label><div class="actions"><button class="btn" id="sendSheet">Prova invio</button><button class="btn" id="saveSyncConfig">Salva configurazione</button><button class="btn" id="loadSheet">Carica dal foglio</button><button class="btn" id="consultSheet">Consulta dal foglio</button><button class="btn hidden" id="resumeEditing">Torna alla modifica</button></div><div id="syncStatus" class="syncstatus">Non ancora inviato.</div></div></div><div class="room"><h2>Backup e trasferimento</h2><p>Le modifiche vengono salvate sul dispositivo. Esporta periodicamente un backup JSON.</p><div class="actions"><button class="btn" id="exportJson">Esporta JSON</button><button class="btn" id="exportCsv">Esporta CSV</button><button class="btn" id="importBtn">Importa JSON</button><button class="btn" id="resetBtn">Ripristina dati iniziali</button></div><input type="file" id="importFile" accept="application/json" class="hidden"><p class="small">Il pulsante “Invia al Google Sheet” copia lo snapshot corrente nel foglio configurato; non modifica il file Excel originale.</p></div></section>
+<section id="tools" class="hidden"><div class="room"><h2>Configurazione Google Sheet</h2><p><b>Da fare una sola volta su questo iPhone.</b> Incolla qui URL e chiave del Web App Apps Script. In seguito usa semplicemente il pulsante <b>Invia</b> in alto.</p><div class="syncbox"><label>URL Web App<input id="syncUrl" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec"></label><label style="margin-top:8px">Chiave condivisa<input id="syncKey" type="password" autocomplete="off" placeholder="La stessa impostata nello script"></label><div class="actions"><button class="btn" id="sendSheet">Prova invio</button><button class="btn" id="saveSyncConfig">Salva configurazione</button><button class="btn" id="checkSheet">Verifica collegamento</button><button class="btn" id="loadSheet">Carica dal foglio</button><button class="btn" id="consultSheet">Consulta dal foglio</button><button class="btn hidden" id="resumeEditing">Torna alla modifica</button></div><div id="syncStatus" class="syncstatus">Non ancora inviato.</div></div></div><div class="room"><h2>Backup e trasferimento</h2><p>Le modifiche vengono salvate sul dispositivo. Esporta periodicamente un backup JSON.</p><div class="actions"><button class="btn" id="exportJson">Esporta JSON</button><button class="btn" id="exportCsv">Esporta CSV</button><button class="btn" id="importBtn">Importa JSON</button><button class="btn" id="resetBtn">Ripristina dati iniziali</button></div><input type="file" id="importFile" accept="application/json" class="hidden"><p class="small">Il pulsante “Invia al Google Sheet” copia lo snapshot corrente nel foglio configurato; non modifica il file Excel originale.</p></div></section>
 </main>
 <div id="dialogHost"></div>
 </div>
@@ -102,7 +104,31 @@ function occupancyHtml(s){
 }
 function timelineHtml(s){let a=parseDate(document.getElementById('rangeStart').value),b=parseDate(document.getElementById('rangeEnd').value);if(a==null||b==null||b<=a)return '<div class="small">Intervallo calendario non valido</div>';let bad=seatConflicts(s),abs=s.absences||[];let chips=abs.filter(x=>x.start&&x.end).map(x=>`<span class="absenceChip">${esc(x.label||'Estero')}: ${esc(x.start)} → ${esc(x.end)}</span>`).join('');return `<div class="timeline"><div class="track">${abs.map(x=>absenceHtml(x,a,b)).join('')}${barHtml(s.primary,'primary',bad.has('primary'),a,b)}${barHtml(s.temporary[0],'temp1',bad.has('temp1'),a,b)}${barHtml(s.temporary[1],'temp2',bad.has('temp2'),a,b)}</div><div class="ticks"><span>${esc(document.getElementById('rangeStart').value)}</span><span>${esc(document.getElementById('rangeEnd').value)}</span></div>${chips?`<div class="absenceList">${chips}</div>`:''}</div>`}
 function assignmentText(p){if(!p)return'';return `${esc(fullName(p))}<div class="meta">${esc(p.start||'già iniziato')} → ${esc(p.end||'fine ?')}${p.supervisor?'<br>'+esc(p.supervisor):''}</div>`}
-function renderRooms(){let h=document.getElementById('rooms');h.innerHTML='';let f=document.getElementById('roomFilter').value,q=document.getElementById('mapSearch').value.toLowerCase();state.rooms.forEach((r,ri)=>{if(f&&r.name!==f)return;let room=document.createElement('div');room.className='room';room.innerHTML=`<h2>${esc(r.name)}</h2><div class="grid"></div>`;let g=room.querySelector('.grid');r.seats.forEach((s,si)=>{let txt=[fullName(s.primary),...s.temporary.map(fullName),s.primary?.supervisor||''].join(' ').toLowerCase();if(q&&!txt.includes(q))return;let bad=seatConflicts(s),el=document.createElement('div');el.className='seat'+(bad.size?' overlap':'');let temps=s.temporary.map((p,i)=>`<div class="temp"><b>Temporaneo ${i+1}</b><br>${assignmentText(p)}</div>`).join('');el.innerHTML=`<div class="seatno"><span>Postazione ${s.number}</span>${bad.size?'<span class="badge bad">Sovrapposizione</span>':''}</div><div class="person">${s.primary?assignmentText(s.primary):'<span class="small">Nessun assegnatario principale</span>'}</div>${temps}${occupancyHtml(s)}${timelineHtml(s)}<div class="actions"><button class="mini" data-edit>Modifica</button></div>`;el.querySelector('[data-edit]').onclick=()=>openEdit(ri,si);g.appendChild(el)});h.appendChild(room)})}
+function renderRooms(){
+  const host=document.getElementById('rooms');host.innerHTML='';
+  const filter=document.getElementById('roomFilter').value,query=document.getElementById('mapSearch').value.toLowerCase();
+  state.rooms.forEach((r,ri)=>{
+    if(filter&&r.name!==filter)return;
+    const layout=roomLayout(r),room=document.createElement('div');room.className='room';room.dataset.room=ri;
+    room.innerHTML=`<h2>${esc(r.name)}</h2><p class="roomBoardHint">${layout.rows} righe × ${layout.cols} colonne · Disposizione della scheda Piante. Scorri lateralmente per vedere tutte le colonne.</p><div class="roomBoard" tabindex="0" role="region" aria-label="${esc('Postazioni '+r.name)}"><div class="grid" style="--room-cols:${layout.cols}"></div></div>`;
+    const grid=room.querySelector('.grid');
+    layout.cells.forEach((key,index)=>{
+      const si=r.seats.findIndex(s=>deskKey(s)===key),seat=si<0?null:r.seats[si];
+      const text=seat?[fullName(seat.primary),...(seat.temporary||[]).map(fullName),seat.primary?.supervisor||''].join(' ').toLowerCase():'';
+      const el=document.createElement('div');el.dataset.cell=index;
+      if(!seat||(query&&!text.includes(query))){
+        el.className='seatEmpty';el.textContent=seat?'Postazione '+seat.number+' · fuori ricerca':'Cella libera';
+        grid.appendChild(el);return;
+      }
+      const bad=seatConflicts(seat);el.className='seat'+(bad.size?' overlap':'');
+      const temps=seat.temporary.map((person,i)=>`<div class="temp"><b>Temporaneo ${i+1}</b><br>${assignmentText(person)}</div>`).join('');
+      el.innerHTML=`<div class="seatno"><span>Postazione ${esc(seat.number)}</span>${bad.size?'<span class="badge bad">Sovrapposizione</span>':''}</div><div class="person">${seat.primary?assignmentText(seat.primary):'<span class="small">Nessun assegnatario principale</span>'}</div>${temps}${occupancyHtml(seat)}${timelineHtml(seat)}<div class="actions"><button class="mini" data-edit>Modifica</button></div>`;
+      el.querySelector('[data-edit]').onclick=()=>openEdit(ri,si);grid.appendChild(el);
+    });
+    host.appendChild(room);
+  });
+}
+
 function personFields(prefix,p,label){p=p||{};return `<div class="sectionTitle wide">${label}</div><label class="wide">Nome e cognome<input id="${prefix}_name" value="${esc(fullName(p))}" placeholder="Lascia vuoto per nessuno"></label><label>Dal<input id="${prefix}_start" type="date" value="${esc(p.start||'')}"></label><label>Al<input id="${prefix}_end" type="date" value="${esc(p.end||'')}"></label><label class="wide">Ruolo / note<input id="${prefix}_position" value="${esc(p.position||p.note||'')}"></label><label class="wide">Supervisore<input id="${prefix}_supervisor" value="${esc(p.supervisor||'')}"></label>`}
 function absenceFields(abs){abs=abs||[];let a=abs[0]||{};return `<div class="sectionTitle wide">Periodo all’estero / assenza del principale</div><div class="small wide">Durante questo intervallo la postazione viene considerata libera per gli assegnatari temporanei.</div><div class="absenceFields wide"><label>Descrizione<input id="a0_label" value="${esc(a.label||'Estero')}" placeholder="es. Periodo all’estero"></label><div class="formgrid"><label>Dal<input id="a0_start" type="date" value="${esc(a.start||'')}"></label><label>Al<input id="a0_end" type="date" value="${esc(a.end||'')}"></label></div></div>`}
 function readAbsences(){let start=document.getElementById('a0_start').value,end=document.getElementById('a0_end').value,label=document.getElementById('a0_label').value.trim()||'Estero';return (start||end)?[{label,start,end}]:[]}
@@ -205,10 +231,10 @@ function sheetConfig(){
 }
 async function fetchSheetSnapshot(config){
   const url=new URL(config.url);url.searchParams.set('action','load');url.searchParams.set('secret',config.secret);url.searchParams.set('_',String(Date.now()));
-  const response=await fetch(url.toString(),{cache:'no-store',redirect:'follow',signal:AbortSignal.timeout(30000)});
+  let response;try{response=await fetch(url.toString(),{cache:'no-store',redirect:'follow',signal:AbortSignal.timeout(30000)})}catch{throw new Error('Il browser non riesce a leggere il Web App. Verifica connessione e accesso della distribuzione: deve essere accessibile senza login Google.')}
   if(!response.ok)throw new Error('Lettura dal foglio non riuscita. Controlla la distribuzione del Web App.');
   let result;try{result=await response.json()}catch{throw new Error('Aggiorna AppsScript_Spazi_BIO.gs e distribuisci una nuova versione del Web App per caricare i dati.')}
-  if(!result.ok)throw new Error(result.error==='unauthorized'?'Chiave condivisa non corretta.':result.error==='no_snapshot'?'Nessuno snapshot salvato. Esegui prima un invio con il nuovo script.':'Impossibile leggere lo snapshot dal foglio.');
+  if(!result.ok){const error=new Error(result.error==='unauthorized'?'Chiave condivisa non corretta.':result.error==='no_snapshot'?'Collegamento e chiave verificati, ma non esiste ancora uno snapshot salvato.':'Errore nello script Google durante la lettura. Apri Apps Script → Esecuzioni per vedere il dettaglio.');error.code=result.error;throw error;}
   const payload=result.payload;
   if(!payload||!Array.isArray(payload.rooms)||!payload.rooms.length||!payload.rooms.every(r=>Array.isArray(r.seats)))throw new Error('Snapshot del foglio non valido.');
   return payload;
@@ -233,13 +259,19 @@ async function sendToSheet(){
   saveSyncConfig();const btn=document.getElementById('sendSheet'),top=document.getElementById('sendSheetTop');btn.disabled=top.disabled=true;syncStatus('Invio in corso…','busy');const payload=snapshotPayload();
   try{
     await fetch(config.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({secret:config.secret,payload}),signal:AbortSignal.timeout(30000)});
-    let confirmed=false;
-    try{for(let i=0;i<3;i++){const saved=await fetchSheetSnapshot(config);if(saved.generatedAt===payload.generatedAt){confirmed=true;break}await new Promise(resolve=>setTimeout(resolve,700))}}catch{}
+    let confirmed=false,verificationError='Il foglio restituisce ancora una versione diversa da quella inviata.';
+    try{for(let i=0;i<3;i++){const saved=await fetchSheetSnapshot(config);if(saved.generatedAt===payload.generatedAt){confirmed=true;break}await new Promise(resolve=>setTimeout(resolve,700))}}catch(e){verificationError=e.message}
     if(confirmed){const now=new Date().toLocaleString('it-IT');localStorage.setItem(SYNC_LAST_KEY,now);syncStatus('Salvataggio verificato nel Google Sheet alle '+now+'.','ok')}
-    else syncStatus('Invio trasmesso, salvataggio non confermato. Controlla il foglio e aggiorna il Web App prima di riprovare.','err');
+    else syncStatus('Invio trasmesso, salvataggio non confermato. '+verificationError,'err');
   }catch{syncStatus('Invio non riuscito o non confermato. Controlla il foglio, URL e connessione prima di riprovare.','err')}
   finally{btn.disabled=top.disabled=consultationMode}
 }
+document.getElementById('checkSheet').onclick=async()=>{
+  const button=document.getElementById('checkSheet');button.disabled=true;syncStatus('Verifica del collegamento, senza inviare dati…','busy');
+  try{await fetchSheetSnapshot(sheetConfig());syncStatus('Collegamento, chiave e lettura dello snapshot verificati. Nessun dato inviato.','ok')}
+  catch(e){syncStatus(e.code==='no_snapshot'?e.message+' Nessun dato inviato.':e.message,e.code==='no_snapshot'?'ok':'err')}
+  finally{button.disabled=false}
+};
 document.getElementById('loadSheet').onclick=()=>loadFromSheet(false);
 document.getElementById('consultSheet').onclick=()=>loadFromSheet(true);
 document.getElementById('resumeEditing').onclick=()=>{

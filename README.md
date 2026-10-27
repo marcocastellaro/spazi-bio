@@ -132,3 +132,31 @@ node --test tests/layouts-browser.test.cjs tests/sheets-browser.test.cjs
 I test usano sessioni browser isolate e richieste al Web App simulate:
 non scrivono sul Google Sheet reale. La prova reale richiede l'aggiornamento
 della distribuzione Apps Script e una verifica delle schede dopo un invio.
+
+
+## Diagnostica del collegamento
+
+Il backend usa `SPREADSHEET_ID` per raggiungere esplicitamente il documento
+Google Fogli indicato dall'utente. L'account che esegue il Web App deve poterlo
+modificare. Dopo aver aggiornato il codice, pubblica una **nuova versione**
+della distribuzione già esistente: il semplice salvataggio del file non
+aggiorna l'URL `/exec`.
+
+- Nell'app, **Configurazione → Verifica collegamento** controlla URL, chiave e
+  lettura senza inviare o modificare dati. Distingue chiave non valida, script
+  precedente, snapshot assente e lettura bloccata.
+- Nell'editor Apps Script puoi eseguire **verificaCollegamento**: il log mostra
+  nome, URL e schede del documento raggiunto, senza scrivere dati né mostrare
+  la chiave. Se richiesto, autorizza l'accesso al foglio.
+- Per un invio reale premi **Invia nell'app**, poi apri **Apps Script → Esecuzioni**
+  e cerca la funzione `doPost` dello stesso orario. Non usare **Esegui** su
+  `doPost`: senza una richiesta HTTP mancano dati e chiave.
+- Nel documento Google Fogli, le schede `Postazioni`, `Assenze`, `Piante`,
+  `SnapshotApp` e `StoricoInvii` sono linguette in basso. Non sono file separati.
+- Il solo messaggio “Execution completed” non prova che i dati siano stati
+  salvati: anche una richiesta rifiutata può terminare regolarmente.
+
+La scheda **Postazioni** usa la stessa disposizione di **Piante**, comprese le
+celle vuote. La ricerca mantiene le posizioni e segnala le celle escluse.
+Su schermi piccoli ogni stanza scorre lateralmente per mantenere leggibili
+le schede dettagliate senza cambiare la matrice.
