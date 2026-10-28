@@ -13,7 +13,6 @@ Mini-app mobile-first per gestire le postazioni BIO@DEI.
 - Il periodo all'estero è mostrato come **finestra verde** nella timeline, con date visibili.
 - Durante il periodo all'estero la postazione viene considerata libera per gli assegnatari temporanei.
 - Le sovrapposizioni vengono segnalate solo quando un temporaneo occupa la postazione mentre il titolare risulta presente, oppure quando i due temporanei si sovrappongono.
-- Vista calendario compatta con barre temporali e conflitti.
 - Barra di utilizzo per ogni postazione basata sulle date Dal–Al impostate in alto. I periodi novembre–ottobre sono preselezioni; sono ammessi intervalli personalizzati.
 - Rosso: titolare presente; giallo: uso temporaneo; verde: disponibile, incluse le assenze del titolare. In caso di sovrapposizione la barra mostra l’uso temporaneo e rimane la segnalazione di conflitto.
 - Una data di inizio vuota indica un’assegnazione già iniziata; una fine vuota indica un’assegnazione senza scadenza.
@@ -259,8 +258,7 @@ Per gli utilizzatori temporanei le date sono etichettate come periodo di uso.
 
 In alto nella scheda **Postazioni**, scegli un **Periodo** novembre–ottobre
 oppure modifica **Dal** e **Al**: in questo caso la selezione passa a
-**Personalizzato**. Tutte le barre si aggiornano sullo stesso intervallo, anche
-nel calendario. Sulle schede non viene ripetuta l'intestazione “Utilizzo” con
+**Personalizzato**. Tutte le barre in Postazioni si aggiornano sullo stesso intervallo. Sulle schede non viene ripetuta l'intestazione “Utilizzo” con
 le date; i mesi sotto la barra si adattano al periodo scelto. I nomi dei
 subentranti restano nei tratti gialli e, toccandoli, si vedono le date del tratto.
 Le date di inizio e fine sono inclusive; è possibile interrogare anche un solo
@@ -271,7 +269,7 @@ invariate quando si cambia l'intervallo di consultazione.
 
 ## Postazioni JOLLY e catalogo aggiornato
 
-La postazione **9 della 209** e la **11 della 301** hanno l'etichetta **JOLLY**.
+Le postazioni **11 della 209**, **11 della 301**, **9 del DEI/S** e **6 e 7 della 125** hanno l'etichetta **JOLLY**. La **9 della 209** non è più JOLLY.
 Identificativi e numeri restano stabili; il nome completo compare nelle schede,
 nelle piante, nei selettori, nei backup e nelle tabelle del foglio. La postazione
 **12 della 301** è rimossa; la sua eventuale cella nella pianta resta libera.

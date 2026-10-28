@@ -11,15 +11,20 @@ const POSTAZIONI_SHEET = 'Postazioni';
 const LOG_SHEET = 'StoricoInvii';
 
 function applySeatCatalog(data){
+  const jolly=(name,number)=>(/\b(?:209|301)\b/.test(name)&&number===11)||(/DEI\s*\/\s*S\b/i.test(name)&&number===9)||(/\b125\b/.test(name)&&(number===6||number===7));
   (data.rooms||[]).forEach(room=>{
     const is209=/\b209\b/.test(room.name),is301=/\b301\b/.test(room.name);
-    if(!is209&&!is301)return;
     const removed=new Set(room.seats.filter(s=>is301&&Number(s.number)===12).map(s=>String(s.id??s.number)));
     room.seats=room.seats.filter(s=>!(is301&&Number(s.number)===12));
-    room.seats.forEach(s=>{if((is209&&Number(s.number)===9)||(is301&&Number(s.number)===11))s.label='JOLLY'});
+    room.seats.forEach(s=>{if(jolly(room.name,Number(s.number)))s.label='JOLLY';else if(is209&&Number(s.number)===9&&s.label==='JOLLY')delete s.label});
     if(room.layout&&Array.isArray(room.layout.cells))room.layout.cells=room.layout.cells.map(key=>removed.has(String(key))?null:key);
   });
-  if(Array.isArray(data.rows))data.rows=data.rows.filter(row=>!(/\b301\b/.test(row.room)&&parseInt(row.seat,10)===12)).map(row=>{if((/\b209\b/.test(row.room)&&parseInt(row.seat,10)===9)||(/\b301\b/.test(row.room)&&parseInt(row.seat,10)===11))return {...row,seat:parseInt(row.seat,10)+' JOLLY'};return row});
+  if(Array.isArray(data.rows))data.rows=data.rows.filter(row=>!(/\b301\b/.test(row.room)&&parseInt(row.seat,10)===12)).map(row=>{
+    const number=parseInt(row.seat,10);
+    if(jolly(row.room,number))return {...row,seat:number+' JOLLY'};
+    if(/\b209\b/.test(row.room)&&number===9&&String(row.seat).trim()==='9 JOLLY')return {...row,seat:9};
+    return row;
+  });
   return data;
 }
 

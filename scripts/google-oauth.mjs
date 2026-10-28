@@ -78,7 +78,7 @@ try{
          if(!result.data?.ok)fail('Aggiornamento catalogo non confermato dal Web App.');
          url.searchParams.set('_',String(Date.now()));const verified=await request({url:url.toString(),timeout:30000,responseType:'json'});
          if(!verified.data?.ok||verified.data.payload.generatedAt!==next.generatedAt||JSON.stringify(verified.data.payload.rooms)!==JSON.stringify(next.rooms))fail('Aggiornamento inviato ma controllo dello snapshot non riuscito.');
-         console.log('Catalogo condiviso aggiornato e riletto: etichette JOLLY e rimozione postazione 12 in 301.');
+         console.log('Catalogo condiviso aggiornato e riletto con le etichette correnti.');
        }
        if(command==='verify')console.log('Web App verificato in lettura; snapshot disponibile.');
        console.log('Versione:',config.versionNumber,'· Stanze:',response.data.payload.rooms.length,'· Schema:',response.data.payload.schemaVersion);

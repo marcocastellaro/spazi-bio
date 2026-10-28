@@ -11,6 +11,6 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
  const overlap=await page.evaluate(()=>occupancySegments({temporary:[{name:'A',start:'2027-01-01',end:'2027-01-03'},{name:'B',start:'2027-01-02',end:'2027-01-04'}]},Date.UTC(2026,10,1),Date.UTC(2027,10,1)).filter(x=>x.kind==='temporary').map(x=>x.temporarySlots));assert.deepEqual(overlap,[[0],[0,1],[1]]);
  await page.evaluate(()=>{state.rooms[0].seats[0].temporary=[{name:'Un giorno <img src=x>',start:'2027-01-01',end:'2027-01-01'}];render()});
  const narrow=seat.locator('.occupancySegment.temporary');await narrow.focus();await page.keyboard.press('Enter');assert((await seat.locator('.occupancyDetail').innerText()).includes('Un giorno <img src=x>'));assert.equal(await narrow.locator('img').count(),0);
- await page.locator('[data-tab="calendar"]').click();assert(await page.locator('#calendarRows .track').count()>0);assert.deepEqual(errors,[]);
+ assert.equal(await page.locator('[data-tab="calendar"]').count(),0);assert.equal(await page.locator('#calendar').count(),0);assert.deepEqual(errors,[]);
  console.log('PASS: single annual bar in Postazioni, white names on yellow, adjacent occupants stay separate, overlapping names, touch/keyboard full details, narrow segments and escaped text.');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
