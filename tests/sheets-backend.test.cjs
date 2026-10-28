@@ -11,11 +11,11 @@ class Sheet{
 const sheets=new Map(),ss={getSheetByName:n=>sheets.get(n)||null,insertSheet:n=>{const s=new Sheet();sheets.set(n,s);return s}};
 let locked=false;const context=vm.createContext({console:{warn(){},log(){}},SpreadsheetApp:{openById:id=>{assert.equal(id,'11gGAyeStD4bZrV2gETq7QwYY3ip6Al2qEMz_xZtF7QI');return ss},flush(){}},LockService:{getScriptLock:()=>({waitLock(){locked=true},hasLock:()=>locked,releaseLock(){locked=false}})},Utilities:{Charset:{UTF_8:'utf8'},base64Encode:s=>Buffer.from(s,'utf8').toString('base64'),base64Decode:s=>Buffer.from(s,'base64'),newBlob:b=>({getDataAsString:()=>Buffer.from(b).toString('utf8')})},ContentService:{MimeType:{JSON:'json'},createTextOutput:text=>({text,setMimeType(){return this}})}});
 vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../AppsScript_Spazi_BIO.gs'),'utf8'),context);
-const call=expr=>JSON.parse(vm.runInContext(expr,context).text);
+const call=expr=>{const result=JSON.parse(vm.runInContext(expr,context).text);if(result.payload){assert.equal(result.payload.pdf.ok,false);delete result.payload.pdf}return result};
 assert.equal(call("doGet({parameter:{action:'load',secret:'incorrect'}})").error,'unauthorized');
 assert.equal(call('doPost()').error,'missing_request');
 assert.equal(call("doGet({parameter:{action:'load',secret:SECRET}})").error,'no_snapshot');
-context.testPayload={schemaVersion:3,generatedAt:'2026-11-01T12:00:00.000Z',rows:[{room:'209',seat:1,name:'Test'}],rooms:[{name:'209',layout:{rows:3,cols:4,cells:['a',null]},seats:[{id:'a',number:1,primary:{name:'Test'},temporary:[],absences:[{label:'Estero',start:'2027-01-01',end:'2027-02-01'}]}]}],reviews:[],longText:'Dati per prova à 🪑 '.repeat(5000)};
+context.testPayload={schemaVersion:3,generatedAt:'2026-11-01T12:00:00.000Z',rows:[{room:'209',seat:1,name:'Test'}],rooms:[{name:'209',layout:{rows:3,cols:4,cells:['a',null]},seats:[{id:'a',number:1,primary:{name:'Test'},temporary:[],absences:[{label:'Estero',start:'2027-01-01',end:'2027-02-01'}]}]}],longText:'Dati per prova à 🪑 '.repeat(5000)};
 assert.equal(call("doPost({postData:{contents:JSON.stringify({secret:'incorrect',payload:testPayload})}})").error,'unauthorized');
 assert.equal(call("doPost({postData:{contents:JSON.stringify({secret:SECRET,payload:{rows:[]}})}})").error,'invalid_payload');
 assert.equal(sheets.size,0);

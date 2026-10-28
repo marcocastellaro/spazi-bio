@@ -11,6 +11,17 @@ const POSTAZIONI_SHEET = 'Postazioni';
 const LOG_SHEET = 'StoricoInvii';
 
 function applySeatCatalog(data){
+  delete data.reviews;
+  const footprints={"Laboratorio 209 DEI/A (10S + 1 B)": {"rows": 3, "cols": 4, "cells": ["r6", "r3", "r4", "r8", "r7", "r11", "r2", "r9", "r5", null, "r12", "r10"]}, "Studio 310 DEI/A (5S)": {"rows": 3, "cols": 2, "cells": ["r13", "r14", "r15", "r16", "r17", null]}, "Laboratorio 301 DEI/A (10S + 1B)": {"rows": 3, "cols": 4, "cells": ["r23", "r24", "r22", "r20", "r19", "r26", "r21", "r25", "r18", null, "r28", "r27"]}, "Ufficio 125 DEI/G (5S)": {"rows": 2, "cols": 4, "cells": ["r30", "r31", "r32", "r33", "r34", "r35", "r36", null]}, "Laboratorio DEI/S -primo piano (9S +1B)": {"rows": 3, "cols": 4, "cells": ["r39", "r40", "r37", "r41", "r44", "r38", "r43", "r42", null, "r45", null, null]}, "Laboratorio 305b DEI/A (4S)": {"rows": 2, "cols": 2, "cells": ["r46", "r48", "r47", "r49"]}};
+  (data.rooms||[]).forEach(room=>{
+    const base=footprints[room.name];if(!base)return;
+    const keys=room.seats.map(s=>String(s.id??s.number)),used=new Set(),cells=base.cells.map(()=>null),existing=room.layout?.cells||base.cells;
+    base.cells.forEach((key,i)=>{const current=existing[i];if(key!=null&&current!=null&&keys.includes(String(current))&&!used.has(String(current))){cells[i]=String(current);used.add(String(current))}});
+    const remaining=[...base.cells.filter(k=>k!=null&&keys.includes(String(k))),...keys].filter((k,i,a)=>a.indexOf(k)===i&&!used.has(String(k)));
+    base.cells.forEach((key,i)=>{if(key!=null&&cells[i]==null&&remaining.length)cells[i]=String(remaining.shift())});
+    room.layout={rows:base.rows,cols:base.cols,cells};
+  });
+
   const jolly=(name,number)=>(/\b(?:209|301)\b/.test(name)&&number===11)||(/DEI\s*\/\s*S\b/i.test(name)&&number===9)||(/\b125\b/.test(name)&&(number===6||number===7));
   (data.rooms||[]).forEach(room=>{
     const is209=/\b209\b/.test(room.name),is301=/\b301\b/.test(room.name);
@@ -94,6 +105,7 @@ function doPost(e) {
     });
     table_(ss,'Assenze',['Stanza','Postazione','Descrizione','Dal','Al'],absences);
     table_(ss,'Piante',['Stanza','Riga','Colonna','Postazione','ID postazione'],positions);
+    try{payload.pdf=savePdf_(payload)}catch(err){payload.pdf={ok:false,error:'PDF non aggiornato: autorizza Drive nello script e verifica l’accesso alla cartella.'}}
     // Split JSON to stay below Google Sheets' per-cell character limit.
     const serialized=Utilities.base64Encode(JSON.stringify(payload),Utilities.Charset.UTF_8),chunks=[];
     for(let i=0;i<serialized.length;i+=20000)chunks.push([chunks.length,serialized.slice(i,i+20000)]);
@@ -139,4 +151,62 @@ function verificaCollegamento(){
   console.log('Schede presenti: '+names.join(', '));
   console.log(ss.getSheetByName('SnapshotApp')?'SnapshotApp presente. Per verificare i dati usa Verifica collegamento nell’app.':'SnapshotApp assente: nessun salvataggio completo presente in questo documento.');
   return {ok:true,spreadsheetId:SPREADSHEET_ID,sheets:names};
+}
+
+function pdfDate_(s){if(!/^\d{4}-\d{2}-\d{2}$/.test(s||''))return null;let [y,m,d]=s.split('-').map(Number);return Date.UTC(y,m-1,d)}
+function pdfSegments_(s,start,end){
+  if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return [];
+  const day=86400000,segments=[],points=new Set([start,end]);
+  const active=(p,t)=>p&&(pdfDate_(p.start)??-Infinity)<=t&&t<=(pdfDate_(p.end)??Infinity);
+  const assignments=[s.primary,...(s.temporary||[]),...(s.absences||[])].filter(Boolean);
+  assignments.forEach(p=>{for(const boundary of [pdfDate_(p.start),pdfDate_(p.end)==null?null:pdfDate_(p.end)+day])if(boundary!=null&&boundary>start&&boundary<end)points.add(boundary)});
+  const boundaries=[...points].sort((a,b)=>a-b);
+  for(let i=0;i<boundaries.length-1;i++){
+    const t=boundaries[i],until=boundaries[i+1];
+    const absent=(s.absences||[]).some(a=>pdfDate_(a.start)!=null&&pdfDate_(a.end)!=null&&active(a,t));
+    const temporarySlots=(s.temporary||[]).flatMap((p,index)=>active(p,t)?[index]:[]);
+    const kind=temporarySlots.length?'temporary':active(s.primary,t)&&!absent?'primary':'available';
+    const last=segments[segments.length-1];
+    if(last&&last.kind===kind&&last.temporarySlots.join(',')===temporarySlots.join(','))last.end=until;else segments.push({kind,temporarySlots,start:t,end:until});
+  }
+  return segments;
+}
+const PDF_FOLDER_ID='1FcoNaxY1AY-O0c63cFgsBpLmVJvEmnE4';
+function pdfEscape_(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function pdfName_(p){return p?[p.name,p.surname].filter(Boolean).join(' '):''}
+function pdfHtml_(payload){
+  const range=payload.viewRange||{start:'2026-11-01',end:'2027-10-31'};
+  const start=pdfDate_(range.start),lastDay=pdfDate_(range.end),end=lastDay+86400000;
+  if(start==null||lastDay==null||!Number.isFinite(end)||end<=start)throw new Error('Invalid PDF range');
+  const rooms=payload.rooms.map(room=>{
+    const layout=room.layout||{rows:1,cols:room.seats.length,cells:room.seats.map(s=>String(s.id??s.number))};let rows='';
+    for(let row=0;row<layout.rows;row++){
+      let cells='';for(let col=0;col<layout.cols;col++){
+        const key=layout.cells[row*layout.cols+col],seat=key==null?null:room.seats.find(s=>String(s.id??s.number)===String(key));
+        if(!seat){cells+='<td></td>';continue}
+        const primary=seat.primary,temps=seat.temporary||[];
+        const bars=pdfSegments_(seat,start,end).map(part=>'<td style="padding:0;height:19px;width:'+((part.end-part.start)/(end-start)*100)+'%;background:'+({primary:'#dc2626',temporary:'#eab308',available:'#16a34a'}[part.kind])+';color:white;font-size:8px;overflow:hidden">'+(part.kind==='temporary'?pdfEscape_(part.temporarySlots.map(i=>pdfName_(temps[i])).join(' / ')):'')+'</td>').join('');
+        cells+='<td class="cell"><b>Postazione '+pdfEscape_(seat.number+(seat.label?' '+seat.label:''))+'</b><p>'+pdfEscape_(pdfName_(primary)||'Senza titolare')+'<br>Fine contratto: '+pdfEscape_(primary?.end||'non indicata')+'</p>'+temps.map(p=>'<p>Temporaneo: '+pdfEscape_(pdfName_(p))+'<br>'+pdfEscape_(p.start||'già iniziato')+' → '+pdfEscape_(p.end||'senza scadenza')+'</p>').join('')+'<table class="bar"><tr>'+bars+'</tr></table></td>';
+      }rows+='<tr>'+cells+'</tr>';
+    }
+    return '<section><h2>'+pdfEscape_(room.name)+'</h2><table class="room">'+rows+'</table></section>';
+  }).join('');
+  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:A4 landscape;margin:10mm}body{font:11px Arial;color:#222}h1{font-size:17px}h2{font-size:14px}section{page-break-after:always}section:last-child{page-break-after:auto}.room{width:100%;table-layout:fixed;border-spacing:7px}.room>tbody>tr>td{vertical-align:top;padding:9px;height:90px}.cell{border:1px solid #ddd}.bar{width:100%;table-layout:fixed;border-collapse:collapse}.bar td{text-align:center}p{line-height:1.3}</style></head><body><h1>Postazioni BIO@DEI</h1><p>Periodo: '+pdfEscape_(range.start)+' – '+pdfEscape_(range.end)+' · Rosso: titolare · Giallo: temporaneo · Verde: disponibile</p>'+rooms+'</body></html>';
+}
+function savePdf_(payload){
+  const folder=DriveApp.getFolderById(PDF_FOLDER_ID),properties=PropertiesService.getScriptProperties();
+  const blob=Utilities.newBlob(pdfHtml_(payload),'text/html','postazioni.html').getAs(MimeType.PDF).setName('Spazi BIO - Postazioni.pdf');
+  let id=properties.getProperty('SPAZI_BIO_PDF_FILE_ID');
+  if(id){
+    const response=UrlFetchApp.fetch('https://www.googleapis.com/upload/drive/v3/files/'+encodeURIComponent(id)+'?uploadType=media',{method:'patch',contentType:'application/pdf',payload:blob.getBytes(),headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken()},muteHttpExceptions:true});
+    if(response.getResponseCode()<200||response.getResponseCode()>=300)throw new Error('Drive PDF update failed');
+  }else{id=folder.createFile(blob).getId();properties.setProperty('SPAZI_BIO_PDF_FILE_ID',id)}
+  return {ok:true,url:'https://drive.google.com/file/d/'+id+'/view'};
+}
+function abilitaArchivioPDF(){
+  const folder=DriveApp.getFolderById(PDF_FOLDER_ID);
+  console.log('Cartella PDF raggiunta: '+folder.getName());
+  const response=UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(PDF_FOLDER_ID)+'?fields=id',{headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken()},muteHttpExceptions:true});
+  if(response.getResponseCode()!==200)throw new Error('Accesso API Drive non riuscito');
+  console.log('Accesso PDF autorizzato. Cartella: '+folder.getUrl());
 }

@@ -63,9 +63,11 @@ Apri `index.html` come entrypoint. Prima di modificare il modello dati, controll
 
 La scheda **Piante** contiene griglie a celle fisse: 209 3×4, 310 3×2,
 301 3×4, 125 2×4, DEI/S 3×4. Per la stanza 305b, già presente nei dati,
-si mantiene una griglia 2×2. Le postazioni iniziali sono disposte per riga.
-Trascina una scrivania oppure selezionala e tocca la cella di destinazione.
-Se la cella è occupata, le scrivanie si scambiano. Numero e assegnazioni
+si mantiene una griglia 2×2. La configurazione condivisa del 28 ottobre 2026
+definisce le celle utilizzabili: gli spazi allora vuoti rimangono bianchi, senza
+etichette e non accettano spostamenti, sia in Piante sia in Postazioni.
+Trascina una scrivania su un’altra oppure seleziona le due scrivanie per
+scambiarle. Numero e assegnazioni
 restano legati alla stessa scrivania. È possibile usare anche Tab e Invio.
 La disposizione si salva sul dispositivo ed è inclusa nel backup JSON.
 
@@ -272,7 +274,7 @@ invariate quando si cambia l'intervallo di consultazione.
 Le postazioni **11 della 209**, **11 della 301**, **9 del DEI/S** e **6 e 7 della 125** hanno l'etichetta **JOLLY**. La **9 della 209** non è più JOLLY.
 Identificativi e numeri restano stabili; il nome completo compare nelle schede,
 nelle piante, nei selettori, nei backup e nelle tabelle del foglio. La postazione
-**12 della 301** è rimossa; la sua eventuale cella nella pianta resta libera.
+**12 della 301** è rimossa; gli spazi vuoti nella pianta sono bloccati.
 La migrazione si applica anche ai dati già salvati nel browser e agli snapshot
 letti dal Web App. Il backend applica le stesse regole agli invii provenienti
 da browser con una versione precedente, evitando che reintroducano la 12.
@@ -295,3 +297,35 @@ Il layout è A4 orizzontale, con una stanza per pagina, mantenendo celle fisse,
 postazioni JOLLY, barre colorate e scadenze. Menu, filtri e comandi dell'app
 sono esclusi. Se il browser propone intestazioni/piè di pagina propri (URL e
 numero pagina), puoi disabilitarli nelle opzioni del pannello di stampa.
+
+
+## PDF automatico su Drive
+
+Dopo ogni **Invia**, il backend genera **Spazi BIO - Postazioni.pdf** nella
+[cartella Drive configurata](https://drive.google.com/drive/u/0/folders/1FcoNaxY1AY-O0c63cFgsBpLmVJvEmnE4).
+I successivi invii aggiornano lo stesso file, mantenendo il suo link.
+L’ID viene conservato nelle proprietà dello script come `SPAZI_BIO_PDF_FILE_ID`.
+
+Il PDF include tutte le stanze dello snapshot inviato, con disposizione fissa,
+spazi vuoti bianchi, assegnatari, scadenze e barre del periodo Dal–Al selezionato.
+Non contiene menu, pulsanti o filtri dell’app. Il PDF automatico non applica
+la ricerca o il filtro stanza, a differenza della stampa manuale dal browser.
+
+Prima della prima pubblicazione di questa funzione:
+
+1. Caricare il codice nell’editor con `node scripts/google-oauth.mjs upload`.
+   Questo comando conserva la distribuzione attuale.
+2. Nell’editor Apps Script, con l’account proprietario, selezionare
+   `abilitaArchivioPDF`, premere **Esegui** e concedere i nuovi permessi Google.
+   La funzione verifica l’accesso alla cartella e alle API Drive senza creare PDF.
+3. Pubblicare con `node scripts/google-oauth.mjs deploy` e verificare un invio.
+
+L’autorizzazione OAuth per modificare il codice da Codex è distinta dai permessi
+dello script per accedere a Drive. Dopo un invio verificato, l’app distingue
+**Dati e PDF aggiornati** da **Dati salvati, PDF non aggiornato** e mostra il link
+al PDF in Configurazione. Un errore nella generazione del PDF non impedisce
+il salvataggio dello snapshot nel foglio. I test locali simulano Drive;
+la conversione PDF e l’accesso alla cartella vanno verificati anche su Google.
+
+La scheda **Verifiche** e il confronto Excel/email sono rimossi. I vecchi dati
+`reviews` sono eliminati durante la migrazione e non vengono più sincronizzati.

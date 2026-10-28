@@ -42,7 +42,7 @@ try{
  }else if(command==='status'){
    console.log('OAuth configurato:',fs.existsSync(path.join(privateRoot,'tokens.json')));
    console.log('Richiesta di consenso preparata:',fs.existsSync(path.join(privateRoot,'pending.json')));
- }else if(['check','inspect','deploy','verify','backup-data','update-catalog'].includes(command)){
+ }else if(['check','inspect','deploy','verify','backup-data','update-catalog','upload'].includes(command)){
    const credentials=readPrivate('tokens.json');client.setCredentials(credentials);
    client.on('tokens',tokens=>{Object.assign(credentials,tokens);savePrivate('tokens.json',credentials)});
    const require=createRequire(path.join(toolRoot,'package.json'));
@@ -80,7 +80,7 @@ try{
          if(!verified.data?.ok||verified.data.payload.generatedAt!==next.generatedAt||JSON.stringify(verified.data.payload.rooms)!==JSON.stringify(next.rooms))fail('Aggiornamento inviato ma controllo dello snapshot non riuscito.');
          console.log('Catalogo condiviso aggiornato e riletto con le etichette correnti.');
        }
-       if(command==='verify')console.log('Web App verificato in lettura; snapshot disponibile.');
+       if(command==='verify'){console.log('Web App verificato in lettura; snapshot disponibile.');const pdf=response.data.payload.pdf;if(pdf)console.log(pdf.ok?'PDF confermato: '+pdf.url:'PDF non aggiornato: '+pdf.error);}
        console.log('Versione:',config.versionNumber,'· Stanze:',response.data.payload.rooms.length,'· Schema:',response.data.payload.schemaVersion);
        if(command!=='update-catalog')console.log('Nessun dato scritto nel foglio.');
      }else{
@@ -89,7 +89,8 @@ try{
        const headChanged=canonicalFiles(head)!==canonicalFiles(files),liveChanged=canonicalFiles(live)!==canonicalFiles(files);
        console.log('Codice da sincronizzare:',headChanged,'· Distribuzione da aggiornare:',liveChanged);
        console.log('Chiave Google e altri file preservati. Versione corrente:',config.versionNumber);
-       if(command==='inspect')console.log('Nessuna modifica eseguita.');
+       if(command==='inspect'){const manifest=JSON.parse(head.find(f=>f.type==='JSON'&&f.name==='appsscript')?.source||'{}');console.log('Scope del manifest:',manifest.oauthScopes||'automatici');console.log('Nessuna modifica eseguita.');}
+       else if(command==='upload'){savePrivate('backup-'+Date.now()+'.json',{files:head,deployment});const fresh=(await api.projects.getContent({scriptId:SCRIPT_ID})).data.files;if(canonicalFiles(fresh)!==canonicalFiles(head))fail('Il progetto è cambiato: caricamento interrotto.');if(headChanged)await api.projects.updateContent({scriptId:SCRIPT_ID,requestBody:{files}});const uploaded=(await api.projects.getContent({scriptId:SCRIPT_ID})).data.files;if(canonicalFiles(uploaded)!==canonicalFiles(files))fail('Controllo caricamento non riuscito');console.log('Codice caricato nell’editor Google. Distribuzione esistente invariata.');}
        else if(headChanged||liveChanged){
          const backupName='backup-'+Date.now()+'.json';savePrivate(backupName,{files:head,deployment});
          const fresh=(await api.projects.getContent({scriptId:SCRIPT_ID})).data.files;
