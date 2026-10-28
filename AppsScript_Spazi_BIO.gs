@@ -105,7 +105,7 @@ function doPost(e) {
     });
     table_(ss,'Assenze',['Stanza','Postazione','Descrizione','Dal','Al'],absences);
     table_(ss,'Piante',['Stanza','Riga','Colonna','Postazione','ID postazione'],positions);
-    try{payload.pdf=savePdf_(payload)}catch(err){payload.pdf={ok:false,error:'PDF non aggiornato: autorizza Drive nello script e verifica l’accesso alla cartella.'}}
+    try{payload.pdf=savePdf_(body.pdf)}catch(err){payload.pdf={ok:false,error:!body.pdf?'PDF non aggiornato: ricarica l’app e ripeti l’invio.':'PDF non aggiornato: verifica l’accesso alla cartella Drive e riprova.'}}
     // Split JSON to stay below Google Sheets' per-cell character limit.
     const serialized=Utilities.base64Encode(JSON.stringify(payload),Utilities.Charset.UTF_8),chunks=[];
     for(let i=0;i<serialized.length;i+=20000)chunks.push([chunks.length,serialized.slice(i,i+20000)]);
@@ -153,49 +153,14 @@ function verificaCollegamento(){
   return {ok:true,spreadsheetId:SPREADSHEET_ID,sheets:names};
 }
 
-function pdfDate_(s){if(!/^\d{4}-\d{2}-\d{2}$/.test(s||''))return null;let [y,m,d]=s.split('-').map(Number);return Date.UTC(y,m-1,d)}
-function pdfSegments_(s,start,end){
-  if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return [];
-  const day=86400000,segments=[],points=new Set([start,end]);
-  const active=(p,t)=>p&&(pdfDate_(p.start)??-Infinity)<=t&&t<=(pdfDate_(p.end)??Infinity);
-  const assignments=[s.primary,...(s.temporary||[]),...(s.absences||[])].filter(Boolean);
-  assignments.forEach(p=>{for(const boundary of [pdfDate_(p.start),pdfDate_(p.end)==null?null:pdfDate_(p.end)+day])if(boundary!=null&&boundary>start&&boundary<end)points.add(boundary)});
-  const boundaries=[...points].sort((a,b)=>a-b);
-  for(let i=0;i<boundaries.length-1;i++){
-    const t=boundaries[i],until=boundaries[i+1];
-    const absent=(s.absences||[]).some(a=>pdfDate_(a.start)!=null&&pdfDate_(a.end)!=null&&active(a,t));
-    const temporarySlots=(s.temporary||[]).flatMap((p,index)=>active(p,t)?[index]:[]);
-    const kind=temporarySlots.length?'temporary':active(s.primary,t)&&!absent?'primary':'available';
-    const last=segments[segments.length-1];
-    if(last&&last.kind===kind&&last.temporarySlots.join(',')===temporarySlots.join(','))last.end=until;else segments.push({kind,temporarySlots,start:t,end:until});
-  }
-  return segments;
-}
 const PDF_FOLDER_ID='1FcoNaxY1AY-O0c63cFgsBpLmVJvEmnE4';
-function pdfEscape_(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function pdfName_(p){return p?[p.name,p.surname].filter(Boolean).join(' '):''}
-function pdfHtml_(payload){
-  const range=payload.viewRange||{start:'2026-11-01',end:'2027-10-31'};
-  const start=pdfDate_(range.start),lastDay=pdfDate_(range.end),end=lastDay+86400000;
-  if(start==null||lastDay==null||!Number.isFinite(end)||end<=start)throw new Error('Invalid PDF range');
-  const rooms=payload.rooms.map(room=>{
-    const layout=room.layout||{rows:1,cols:room.seats.length,cells:room.seats.map(s=>String(s.id??s.number))};let rows='';
-    for(let row=0;row<layout.rows;row++){
-      let cells='';for(let col=0;col<layout.cols;col++){
-        const key=layout.cells[row*layout.cols+col],seat=key==null?null:room.seats.find(s=>String(s.id??s.number)===String(key));
-        if(!seat){cells+='<td></td>';continue}
-        const primary=seat.primary,temps=seat.temporary||[];
-        const bars=pdfSegments_(seat,start,end).map(part=>'<td style="padding:0;height:19px;width:'+((part.end-part.start)/(end-start)*100)+'%;background:'+({primary:'#dc2626',temporary:'#eab308',available:'#16a34a'}[part.kind])+';color:white;font-size:8px;overflow:hidden">'+(part.kind==='temporary'?pdfEscape_(part.temporarySlots.map(i=>pdfName_(temps[i])).join(' / ')):'')+'</td>').join('');
-        cells+='<td class="cell"><b>Postazione '+pdfEscape_(seat.number+(seat.label?' '+seat.label:''))+'</b><p>'+pdfEscape_(pdfName_(primary)||'Senza titolare')+'<br>Fine contratto: '+pdfEscape_(primary?.end||'non indicata')+'</p>'+temps.map(p=>'<p>Temporaneo: '+pdfEscape_(pdfName_(p))+'<br>'+pdfEscape_(p.start||'già iniziato')+' → '+pdfEscape_(p.end||'senza scadenza')+'</p>').join('')+'<table class="bar"><tr>'+bars+'</tr></table></td>';
-      }rows+='<tr>'+cells+'</tr>';
-    }
-    return '<section><h2>'+pdfEscape_(room.name)+'</h2><table class="room">'+rows+'</table></section>';
-  }).join('');
-  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:A4 landscape;margin:10mm}body{font:11px Arial;color:#222}h1{font-size:17px}h2{font-size:14px}section{page-break-after:always}section:last-child{page-break-after:auto}.room{width:100%;table-layout:fixed;border-spacing:7px}.room>tbody>tr>td{vertical-align:top;padding:9px;height:90px}.cell{border:1px solid #ddd}.bar{width:100%;table-layout:fixed;border-collapse:collapse}.bar td{text-align:center}p{line-height:1.3}</style></head><body><h1>Postazioni BIO@DEI</h1><p>Periodo: '+pdfEscape_(range.start)+' – '+pdfEscape_(range.end)+' · Rosso: titolare · Giallo: temporaneo · Verde: disponibile</p>'+rooms+'</body></html>';
-}
-function savePdf_(payload){
+function savePdf_(document){
+  const encoded=document&&document.base64;
+  if(typeof encoded!=='string'||encoded.length>17*1024*1024||!/^JVBERi0[A-Za-z0-9+/]*={0,2}$/.test(encoded))throw new Error('Invalid PDF upload');
+  const bytes=Utilities.base64Decode(encoded);
+  if(bytes.length>12*1024*1024)throw new Error('PDF too large');
   const folder=DriveApp.getFolderById(PDF_FOLDER_ID),properties=PropertiesService.getScriptProperties();
-  const blob=Utilities.newBlob(pdfHtml_(payload),'text/html','postazioni.html').getAs(MimeType.PDF).setName('Spazi BIO - Postazioni.pdf');
+  const blob=Utilities.newBlob(bytes,'application/pdf','Spazi BIO - Postazioni.pdf');
   let id=properties.getProperty('SPAZI_BIO_PDF_FILE_ID');
   if(id){
     const response=UrlFetchApp.fetch('https://www.googleapis.com/upload/drive/v3/files/'+encodeURIComponent(id)+'?uploadType=media',{method:'patch',contentType:'application/pdf',payload:blob.getBytes(),headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken()},muteHttpExceptions:true});

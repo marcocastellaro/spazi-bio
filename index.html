@@ -48,7 +48,7 @@ main{padding:12px;max-width:1100px;margin:auto} .toolbar{display:flex;gap:8px;fl
   .occupancy{margin-top:7px}.occupancyTrack{height:19px}.occupancyName{font-size:9px}.occupancyMonths{font-size:8px}.occupancyLegend{font-size:8px;gap:5px}
 }
 .floorCell.empty,.seatEmpty.blockedCell{background:#fff;border:0;box-shadow:none;cursor:default}
-</style></head><body>
+</style><script defer src="vendor/html2canvas.min.js"></script><script defer src="vendor/jspdf.min.js"></script><script defer src="scripts/postazioni-pdf.js"></script></head><body>
 <div id="authGate" class="authGate"><form id="authForm" class="authCard"><h2>Spazi BIO@DEI</h2><p>Inserisci la password per accedere alla gestione delle postazioni.</p><label>Password<input id="authPassword" type="password" autocomplete="current-password" inputmode="text" placeholder="Password"></label><div class="actions"><button class="btn sendTop" type="submit">Accedi</button></div><div id="authMsg" class="authMsg" aria-live="polite"></div></form></div>
 <div id="appRoot" class="appLocked">
 <header><h1>Spazi BIO@DEI</h1><nav><button data-tab="map" class="active">Postazioni</button><button data-tab="layouts">Piante</button><button data-tab="tools">Configurazione</button><button id="sendSheetTop" class="sendTop">Invia</button><button id="lockApp">Blocca</button></nav><div id="topSyncStatus" class="topstatus">Non sincronizzato</div></header>
@@ -357,7 +357,7 @@ state.rooms.forEach(r=>{let o=document.createElement('option');o.value=r.name;o.
 document.getElementById('occupancyYear').addEventListener('change',()=>{const value=document.getElementById('occupancyYear').value;if(value!=='custom'){const year=Number(value);document.getElementById('rangeStart').value=`${year}-11-01`;document.getElementById('rangeEnd').value=`${year+1}-10-31`;}render()});
 ['rangeStart','rangeEnd'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{const preset=document.getElementById('occupancyYear');preset.value=[...preset.options].find(o=>o.value!=='custom'&&document.getElementById('rangeStart').value===`${o.value}-11-01`&&document.getElementById('rangeEnd').value===`${Number(o.value)+1}-10-31`)?.value||'custom';render()}));
 document.getElementById('roomFilter').addEventListener('change',render);document.getElementById('mapSearch').addEventListener('input',render);
-document.getElementById('printPostazioni').onclick=()=>{document.getElementById('printPeriod').textContent='Periodo visualizzato: '+displayDate(document.getElementById('rangeStart').value)+' – '+displayDate(document.getElementById('rangeEnd').value);window.print()};
+document.getElementById('printPostazioni').onclick=()=>{document.getElementById('printPeriod').textContent='Periodo visualizzato: '+displayDate(document.getElementById('rangeStart').value)+' – '+displayDate(document.getElementById('rangeEnd').value);openPostazioniPdf()};
 [...document.querySelectorAll('nav button')].forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('main>section').forEach(x=>x.classList.add('hidden'));document.getElementById(b.dataset.tab).classList.remove('hidden');render()});
 function download(name,type,text){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 document.getElementById('exportJson').onclick=()=>download('spazi_bio_calendario_backup.json','application/json',JSON.stringify(state,null,2));
@@ -402,9 +402,10 @@ async function loadFromSheet(readOnly){
 async function sendToSheet(){
   if(consultationMode)return;
   let config;try{config=sheetConfig()}catch(e){syncStatus(e.message,'err');return}
-  saveSyncConfig();const btn=document.getElementById('sendSheet'),top=document.getElementById('sendSheetTop');btn.disabled=top.disabled=true;syncStatus('Invio in corso…','busy');const payload=snapshotPayload();
+  saveSyncConfig();const btn=document.getElementById('sendSheet'),top=document.getElementById('sendSheetTop');btn.disabled=top.disabled=true;syncStatus('Preparazione PDF e invio…','busy');const payload=JSON.parse(JSON.stringify(snapshotPayload()));
   try{
-    await fetch(config.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({secret:config.secret,payload}),signal:AbortSignal.timeout(30000)});
+    let pdf;try{pdf=await buildPostazioniPdf()}catch(error){syncStatus(error.message||'Creazione PDF non riuscita. Nessun invio eseguito.','err');return}
+    await fetch(config.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({secret:config.secret,payload,pdf:{base64:pdf.base64}}),signal:AbortSignal.timeout(60000)});
     let confirmed=false,pdfResult=null,verificationError='Il foglio restituisce ancora una versione diversa da quella inviata.';
     try{for(let i=0;i<3;i++){const saved=await fetchSheetSnapshot(config);if(saved.generatedAt===payload.generatedAt){confirmed=true;pdfResult=saved.pdf;break}await new Promise(resolve=>setTimeout(resolve,700))}}catch(e){verificationError=e.message}
     if(confirmed){const now=new Date().toLocaleString('it-IT');localStorage.setItem(SYNC_LAST_KEY,now);syncStatus(pdfResult?.ok?'Dati e PDF su Drive aggiornati alle '+now+'.':pdfResult?'Dati salvati. '+pdfResult.error:'Salvataggio verificato nel Google Sheet alle '+now+'.',pdfResult&&!pdfResult.ok?'err':'ok');const link=document.getElementById('drivePdf');link.classList.toggle('hidden',!pdfResult?.ok);if(pdfResult?.ok)link.href=pdfResult.url}

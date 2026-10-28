@@ -288,9 +288,9 @@ al posto delle modifiche salvate dall'utente.
 
 ## Stampa della scheda Postazioni
 
-Il pulsante **🖨️ Stampa / PDF** apre il pannello di stampa del browser, da cui
-scegliere **Salva come PDF**. Su iPhone usa le opzioni di stampa/condivisione
-dell'anteprima per salvare il PDF. La stampa segue stanza, ricerca e intervallo
+Il pulsante **🖨️ Stampa / PDF** apre il PDF generato dall’app in una nuova
+scheda. Dal visualizzatore puoi stamparlo o salvarlo; su iPhone usa **Condividi**
+e poi **Stampa** o **Salva su File**. Il PDF segue stanza, ricerca e intervallo
 visualizzati nella scheda Postazioni.
 
 Il layout è A4 orizzontale, con una stanza per pagina, mantenendo celle fisse,
@@ -306,10 +306,24 @@ Dopo ogni **Invia**, il backend genera **Spazi BIO - Postazioni.pdf** nella
 I successivi invii aggiornano lo stesso file, mantenendo il suo link.
 L’ID viene conservato nelle proprietà dello script come `SPAZI_BIO_PDF_FILE_ID`.
 
-Il PDF include tutte le stanze dello snapshot inviato, con disposizione fissa,
-spazi vuoti bianchi, assegnatari, scadenze e barre del periodo Dal–Al selezionato.
-Non contiene menu, pulsanti o filtri dell’app. Il PDF automatico non applica
-la ricerca o il filtro stanza, a differenza della stampa manuale dal browser.
+Il PDF usa esattamente la vista di **Stampa / PDF**, inclusi filtro stanza,
+ricerca e periodo Dal–Al: il browser genera un unico file e lo allega all’invio.
+Il foglio continua a ricevere tutte le assegnazioni, anche con filtri attivi.
+Apps Script salva i byte ricevuti senza ricostruire o convertire l’impaginazione.
+I byte non sono conservati nelle celle di `SnapshotApp`.
+
+`scripts/postazioni-pdf.js` riusa le schede e il CSS di stampa dell’app.
+Le librerie html2canvas e jsPDF sono incluse in `vendor/`, senza CDN o servizi
+esterni: una pagina A4 orizzontale per stanza, con riduzione proporzionale se
+necessaria. Le schede sono immagini ad alta risoluzione nel PDF: il testo non
+è selezionabile. Stampa e invio della stessa vista riusano lo stesso file.
+Se cambiano dati, filtri o periodo, il PDF viene rigenerato.
+
+Per aggiornare il PDF condiviso dagli ultimi dati del foglio, senza caricare i
+dati iniziali, avvia il server locale e usa
+`node scripts/google-oauth.mjs refresh-pdf`. Il comando fa un backup privato,
+usa il generatore browser e verifica che non siano intervenuti altri invii
+prima di scrivere. Richiede Playwright e Chromium come i test browser.
 
 Prima della prima pubblicazione di questa funzione:
 
@@ -325,7 +339,7 @@ dello script per accedere a Drive. Dopo un invio verificato, l’app distingue
 **Dati e PDF aggiornati** da **Dati salvati, PDF non aggiornato** e mostra il link
 al PDF in Configurazione. Un errore nella generazione del PDF non impedisce
 il salvataggio dello snapshot nel foglio. I test locali simulano Drive;
-la conversione PDF e l’accesso alla cartella vanno verificati anche su Google.
+l’accesso alla cartella va verificato anche su Google.
 
 La scheda **Verifiche** e il confronto Excel/email sono rimossi. I vecchi dati
 `reviews` sono eliminati durante la migrazione e non vengono più sincronizzati.
